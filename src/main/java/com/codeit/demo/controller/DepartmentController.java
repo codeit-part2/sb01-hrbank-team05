@@ -7,11 +7,17 @@ import com.codeit.demo.dto.request.DepartmentUpdateRequest;
 import com.codeit.demo.dto.response.CursorPageResponse;
 import com.codeit.demo.service.DepartmentService;
 import jakarta.validation.Valid;
-import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
@@ -42,28 +48,16 @@ public class DepartmentController implements DepartmentApi {
       cursorVal = idAfter;
     }
 
-    // 먼저 부서 목록을 조회
     CursorPageResponse<DepartmentDto> response = departmentService.getAllDepartments(
         cursorVal, size, nameOrDescription, sortField, sortDirection);
 
-    // 각 부서별로 직원 수를 업데이트
-    List<DepartmentDto> updatedDepartments = response.getContent().stream()
-        .map(dept -> departmentService.updateEmployeeCount(dept.getId()))
-        .collect(Collectors.toList());
-
-    // 업데이트된 부서 정보로 응답 객체를 새로 생성
-    CursorPageResponse<DepartmentDto> updatedResponse = new CursorPageResponse<>(
-        updatedDepartments,
-        response.getNextCursor(),
-        response.isHasNext());
-
-    return ResponseEntity.ok(updatedResponse);
+    return ResponseEntity.ok(response);
   }
 
   @Override
   @GetMapping("/{id}")
   public ResponseEntity<DepartmentDto> getDepartmentById(@PathVariable("id") Long id) {
-    DepartmentDto department = departmentService.updateEmployeeCount(id);
+    DepartmentDto department = departmentService.getDepartmentById(id);
     return ResponseEntity.ok(department);
   }
 
@@ -71,7 +65,7 @@ public class DepartmentController implements DepartmentApi {
   @PostMapping
   public ResponseEntity<DepartmentDto> createDepartment(@Valid @RequestBody DepartmentCreateRequest request) {
     DepartmentDto createdDepartment = departmentService.createDepartment(request);
-    return ResponseEntity.ok(createdDepartment);
+    return ResponseEntity.ok(createdDepartment); // 201 대신 200 사용
   }
 
   @Override

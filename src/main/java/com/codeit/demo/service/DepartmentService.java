@@ -1,9 +1,9 @@
 package com.codeit.demo.service;
 
 import com.codeit.demo.dto.data.DepartmentDto;
-import com.codeit.demo.dto.response.CursorPageResponse;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
+import com.codeit.demo.dto.response.CursorPageResponse;
 
 public interface DepartmentService {
 

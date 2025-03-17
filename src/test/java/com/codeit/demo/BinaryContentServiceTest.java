@@ -59,10 +59,10 @@ class BinaryContentServiceTest {
 
         // 1️⃣ 파일 데이터 생성
         byte[] fileData = "테스트 파일 데이터2".getBytes();
-        BinaryContent binaryContent = new BinaryContent("test2.txt", (long) fileData.length, "text/plain");
+        BinaryContent binaryContent = new BinaryContent("test2.txt", (int) fileData.length, "text/plain");
 
         // 2️⃣ 파일 저장 (DB + 로컬 저장소)
-        BinaryContent savedBinaryContent = binaryContentService.create(binaryContent, fileData);
+        BinaryContent savedBinaryContent = binaryContentService.create(fileData);
 
         // 3️⃣ 저장 후 ID가 생성되었는지 확인
         assertThat(savedBinaryContent.getId()).isNotNull();

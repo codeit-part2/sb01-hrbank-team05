@@ -4,10 +4,11 @@ import com.codeit.demo.dto.data.DepartmentDto;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
 import com.codeit.demo.entity.Department;
-import org.mapstruct.*;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring",
     imports = {LocalDate.class, LocalDateTime.class})
