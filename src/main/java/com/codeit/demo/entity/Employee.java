@@ -15,6 +15,7 @@ import jakarta.persistence.OneToOne;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -54,11 +55,11 @@ public class Employee {
     @JoinColumn(name = "profile_image_id")
     private BinaryContent profileImage;
 
-    public Employee(String name, String email,LocalDate hireDate) {
+    public Employee(String name, String email,String employeeNumber,LocalDate hireDate,EmploymentStatus status) {
         this.name = name;
         this.email = email;
-        this.employeeNumber="E1";
+        this.employeeNumber=employeeNumber;
         this.hireDate = hireDate;
-        this.status = EmploymentStatus.ACTIVE;
+        this.status = status;
     }
 }

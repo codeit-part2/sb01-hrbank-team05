@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -19,26 +20,31 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
 
     @Override
-    public List<EmployeeTrendDto> findTrend(LocalDate from, LocalDate to, String unit) {
+    public List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit) {
         if(to==null) {
             to=LocalDate.now();
         }
         if(from==null) {
             from=calculateStart(to,unit);
         }
-        List<Object[]> trend = employeeRepository.findTrend(from, to);
-        int currentCount=findTotalEmployeeCount(to);
-        LocalDate previousDate= calculatePreviousDate(to, unit);
-        int previousTotal = findTotalEmployeeCount(previousDate);
+        List<LocalDate> dateRange = generateDateRange(from, to, unit);
 
-        int change=currentCount-previousTotal;
-        double changeRate = (previousTotal == 0) ? 0 : ((double) change / previousTotal) * 100;
+        List<EmployeeTrendDto> trends = new ArrayList<>();
+        Integer previousCount = null;
 
-        List<EmployeeTrendDto> result = trend.stream().map(obj -> new EmployeeTrendDto(
-                (LocalDate) obj[0],
-                ((Number) obj[1]).intValue(), change, changeRate)).toList();
-        return result;
+        for (LocalDate date : dateRange) {
+            int currentCount = employeeRepository.findTotalCountNoResigned(date);
+            int change = (previousCount == null) ? 0 : currentCount - previousCount;
+            double changeRate = (previousCount == null || previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
+            trends.add(new EmployeeTrendDto(date, currentCount, change, changeRate));
+            previousCount = currentCount;
+        }
+
+        return trends;
+
     }
+
+
 
     private LocalDate calculateStart(LocalDate to, String unit) {
         return switch (unit.toLowerCase()) {
@@ -53,21 +59,22 @@ public class EmployeeServiceImpl implements EmployeeService {
             default -> to.minusMonths(12).with(TemporalAdjusters.firstDayOfMonth());
         };
     }
-    private LocalDate calculatePreviousDate(LocalDate to,String unit) {
-        return switch (unit.toLowerCase()) {
-            case "day" -> to.minusDays(1);
-            case "week" -> to.minusWeeks(1);
-            case "month" -> to.minusMonths(1).withDayOfMonth(1);
-            case "year" -> to.minusYears(1).with(TemporalAdjusters.firstDayOfYear());
-            case "quarter" -> {
-                int quarterStart = ((to.getMonthValue() - 1) / 3) * 3 + 1;
-                yield to.withMonth(quarterStart).minusMonths(3).with(TemporalAdjusters.firstDayOfMonth());
-            }
-            default -> to.minusMonths(1).with(TemporalAdjusters.firstDayOfMonth());
-        };
-    }
-    private int findTotalEmployeeCount(LocalDate date){
-        Integer count = employeeRepository.findTotalCountByDate(date);
-        return count !=null ? count : 0;
+
+    private List<LocalDate> generateDateRange(LocalDate from, LocalDate to, String unit) {
+        List<LocalDate> dates = new ArrayList<>();
+        LocalDate current = from;
+
+        while (!current.isAfter(to)) {
+            dates.add(current);
+            current = switch (unit.toLowerCase()) {
+                case "day" -> current.plusDays(1);
+                case "week" -> current.plusWeeks(1);
+                case "month" -> current.plusMonths(1);
+                case "year" -> current.plusYears(1);
+                case "quarter" -> current.plusMonths(3);
+                default -> current.plusMonths(1);
+            };
+        }
+        return dates;
     }
 }

@@ -25,7 +25,7 @@ public class EmployeeController implements EmployeeApi {
     public ResponseEntity<List<EmployeeTrendDto>> trend(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate from,
                                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate to,
                                                         @RequestParam(defaultValue = "month") String unit){
-        List<EmployeeTrendDto> result=employeeService.findTrend(from, to, unit);
+        List<EmployeeTrendDto> result=employeeService.findTrends(from, to, unit);
         return ResponseEntity.ok(result);
     }
 

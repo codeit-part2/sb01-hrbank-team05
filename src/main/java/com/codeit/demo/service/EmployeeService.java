@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface EmployeeService {
 
-    List<EmployeeTrendDto> findTrend(LocalDate from, LocalDate to, String unit);
+    List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit);
 
 }

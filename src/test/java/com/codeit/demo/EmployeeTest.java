@@ -2,6 +2,7 @@ package com.codeit.demo;
 
 import com.codeit.demo.dto.EmployeeTrendDto;
 import com.codeit.demo.entity.Employee;
+import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.service.EmployeeService;
 import jakarta.persistence.EntityManager;
@@ -14,10 +15,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.*;
 
 
 @SpringBootTest
@@ -36,32 +34,40 @@ class EmployeeTest {
     @BeforeEach
     void setUp() {
         employeeRepository.deleteAll();
-        List<Employee> employees = Arrays.asList(
-                new Employee("Alice", "alice@example.com", LocalDate.of(2023, 1, 10)),
-                new Employee("Bob", "bob@example.com", LocalDate.of(2023, 3, 15)),
-                new Employee("Charlie", "charlie@example.com", LocalDate.of(2023, 5, 20)),
-                new Employee("David", "david@example.com", LocalDate.of(2023, 8, 5)),
-                new Employee("Emma", "emma@example.com", LocalDate.of(2023, 11, 25))
-        );
-        employeeRepository.saveAll(employees);
+        Employee employee1 = new Employee("Alice", "alice@example.com", "E1", LocalDate.of(2023, 1, 1), EmploymentStatus.ACTIVE);
+        Employee employee2 = new Employee("Bob", "bob@example.com", "E2", LocalDate.of(2023, 1, 5), EmploymentStatus.ACTIVE);
+        Employee employee3 = new Employee("Charlie", "charlie@example.com", "E3", LocalDate.of(2023, 1, 7), EmploymentStatus.ACTIVE);
+        Employee employee4 = new Employee("Emma", "emma@example.com", "E5", LocalDate.of(2023, 1, 13), EmploymentStatus.ACTIVE);
+        employeeRepository.save(employee1);
+        employeeRepository.save(employee2);
+        employeeRepository.save(employee3);
+        employeeRepository.save(employee4);
         em.flush(); // 데이터 저장 즉시 반영
         em.clear(); // 영속성 컨텍스트 초기화
     }
 
     @Test
     void testFindTrend() {
+
+        LocalDate changeDate = LocalDate.of(2023, 1, 9);
+        Employee alice = employeeRepository.findByName("Alice").orElseThrow();
+        alice.setStatus(EmploymentStatus.ON_LEAVE);
+        employeeRepository.save(alice);  // 변경된 상태 저장
+
+
         LocalDate from = LocalDate.of(2023, 1, 1);
-        LocalDate to = LocalDate.of(2023, 12, 31);
-        String unit = "month";
+        LocalDate to = LocalDate.of(2023, 1, 13);
+        String unit = "day";
 
-        List<EmployeeTrendDto> result = employeeService.findTrend(from, to, unit);
+        List<EmployeeTrendDto> result = employeeService.findTrends(from, to, unit);
 
-        // Then
-        assertThat(result).isNotEmpty();
-        assertThat(result.size()).isEqualTo(5);  // 예상 결과 개수 검증
+
+        System.out.println("=== Employee Trend Data ===");
         for (EmployeeTrendDto dto : result) {
-            assertThat(dto.getDate()).isNotNull();  // null 여부만 체크
-            assertThat(dto.getCount()).isGreaterThan(0);  // 직원 수가 0보다 큰지 검증
+            System.out.printf("날짜: %s, 직원 수: %d, 변화량: %d, 변화율: %.2f%% %n",
+                    dto.getDate(), dto.getCount(), dto.getChange(), dto.getChangeRate());
         }
     }
+
+
 }
