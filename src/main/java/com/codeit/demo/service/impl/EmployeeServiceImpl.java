@@ -203,9 +203,18 @@ public class EmployeeServiceImpl implements EmployeeService {
   @Override
   @Transactional
   public EmployeeDto updateEmployee(Long id, EmployeeUpdateRequest request) {
-    Employee employee = employeeRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("직원을 찾을 수 없습니다: " + id));
+    log.info("Updating employee with ID: {}", id);
 
+    Employee employee = employeeRepository.findById(id)
+        .orElseThrow(() -> new EmployeeNotFoundException("직원을 찾을 수 없습니다: " + id));
+
+    // 이메일 중복 확인 (다른 직원이 같은 이메일을 사용하고 있는지)
+    Optional<Employee> existingEmployee = employeeRepository.findByEmail(request.email());
+    if (existingEmployee.isPresent() && !existingEmployee.get().getId().equals(id)) {
+      throw new DuplicateEmailException("이메일이 이미 사용 중입니다: " + request.email());
+    }
+
+    // 부서 정보 업데이트 로직
     Department oldDepartment = employee.getDepartment();
     Long oldDepartmentId = oldDepartment != null ? oldDepartment.getId() : null;
     Long newDepartmentId = Long.valueOf(request.departmentId());
@@ -228,10 +237,12 @@ public class EmployeeServiceImpl implements EmployeeService {
       departmentRepository.decrementEmployeeCount(oldDepartmentId);
     }
 
-    // 나머지 업데이트 로직...
-    Employee savedEmployee = employeeRepository.save(employee);
+    employeeMapper.updateEmployeeFromRequest(request, employee);
 
-    return employeeMapper.employeeToEmployeeDto(savedEmployee); // 올바른 메서드명으로 수정
+    Employee updatedEmployee = employeeRepository.save(employee);
+    log.info("Employee updated with ID: {}", updatedEmployee.getId());
+
+    return employeeMapper.employeeToEmployeeDto(updatedEmployee);
   }
 
 
