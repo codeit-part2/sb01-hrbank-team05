@@ -13,7 +13,6 @@ import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.Timestamp;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;

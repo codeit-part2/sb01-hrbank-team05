@@ -16,4 +16,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             " group by e.hireDate" +
             " order by e.hireDate")
     List<Object[]> findTrend(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("select count(e.id) from Employee e" +
+            " where e.hireDate<=:date")
+    Integer findTotalCountByDate(@Param("date") LocalDate date);
 }
