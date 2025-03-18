@@ -1,6 +1,5 @@
 package com.codeit.demo;
 
-import com.codeit.demo.dto.EmployeeTrendDto;
 import com.codeit.demo.entity.Employee;
 import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.repository.EmployeeRepository;

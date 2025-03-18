@@ -2,7 +2,7 @@ package com.codeit.demo.controller;
 
 import com.codeit.demo.controller.api.BinaryContentApi;
 import com.codeit.demo.entity.BinaryContent;
-import com.codeit.demo.service.impl.BinaryContentServiceImpl;
+import com.codeit.demo.service.BinaryContentService;
 import com.codeit.demo.storage.BinaryContentStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,33 +22,24 @@ import java.util.List;
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 public class BinaryContentController implements BinaryContentApi {
-    private final BinaryContentServiceImpl binaryContentService;
-    private final BinaryContentStorage binaryContentStorage;
+  private final BinaryContentService binaryContentService;
+  private final BinaryContentStorage binaryContentStorage;
 
-    @PostMapping(consumes = {"multipart/form-data"})
-    public ResponseEntity<List<BinaryContent>> saveBinaryContent(@RequestParam("files") List<MultipartFile> files) {
-        List<BinaryContent> savedFiles=new ArrayList<>();
-        for (MultipartFile file : files) {
-            try {
-                BinaryContent binaryContent = new BinaryContent(
-                        file.getOriginalFilename(),
-                        file.getSize(),
-                        file.getContentType()
-                );
-                binaryContentService.create(binaryContent, file.getBytes());
-                savedFiles.add(binaryContent);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return ResponseEntity.ok(savedFiles);
+  @PostMapping(consumes = {"multipart/form-data"})
+  public ResponseEntity<List<BinaryContent>> saveBinaryContent(@RequestParam("files") List<MultipartFile> files)
+      throws IOException {
+    List<BinaryContent> savedFiles = new ArrayList<>();
+    for (MultipartFile file : files) {
+      BinaryContent savedContent = binaryContentService.createBinaryContent(file);
+      savedFiles.add(savedContent);
     }
+    return ResponseEntity.ok(savedFiles);
+  }
 
-    @GetMapping("/{id}/download")
-    @Override
-    public ResponseEntity<?> download(@PathVariable Long id) {
-        BinaryContent findFile = binaryContentService.findById(id);
-        return binaryContentStorage.download(findFile);
-    }
-
+  @GetMapping("/{binaryContentId}/download")
+  @Override
+  public ResponseEntity<?> download(@PathVariable Long binaryContentId) {
+    BinaryContent findFile = binaryContentService.findById(binaryContentId);
+    return binaryContentStorage.download(findFile);
+  }
 }
