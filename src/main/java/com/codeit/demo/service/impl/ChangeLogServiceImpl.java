@@ -11,6 +11,7 @@ import com.codeit.demo.service.ChangeDescriptionService;
 import com.codeit.demo.service.ChangeLogService;
 import com.codeit.demo.util.ClientInfo;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,5 +77,20 @@ public class ChangeLogServiceImpl implements ChangeLogService {
             Instant.now()));
     // change_description 추가
     changeDescriptionService.createChangeDescriptionForDeletion(changeLog, employee);
+  }
+
+  @Override
+  public long countLogs(Instant fromDate, Instant toDate) {
+    // 기본 값 설정
+    if (fromDate == null) {
+      fromDate = Instant.now().minus(7, ChronoUnit.DAYS);
+    }
+    if (toDate == null) {
+      toDate = Instant.now();
+    }
+    if (fromDate.isAfter(toDate)) {
+      throw new IllegalArgumentException("유효하지 않은 날짜 범위입니다.");
+    }
+    return changeLogRepository.countAllByAtGreaterThanAndAtLessThan(fromDate, toDate);
   }
 }
