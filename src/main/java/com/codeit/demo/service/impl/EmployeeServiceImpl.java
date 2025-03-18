@@ -21,17 +21,15 @@ import com.codeit.demo.util.CursorPageUtil;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -292,38 +290,62 @@ public class EmployeeServiceImpl implements EmployeeService {
   }
 
   @Override
-  public List<EmployeeTrendDto> getEmployeeTrends(LocalDate startDate, LocalDate endDate, String status) {
-    // 기본값 설정
-    if (startDate == null) {
-      startDate = LocalDate.now().minusMonths(6);
+  public List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit) {
+    if(to==null) {
+      to=LocalDate.now();
     }
-    if (endDate == null) {
-      endDate = LocalDate.now();
+    if(from==null) {
+      from=calculateStart(to,unit);
+    }
+    List<LocalDate> dateRange = generateDateRange(from, to, unit);
+
+    List<EmployeeTrendDto> trends = new ArrayList<>();
+    Integer previousCount = null;
+
+    for (LocalDate date : dateRange) {
+      int currentCount = employeeRepository.findTotalCountNoResigned(date);
+      int change = (previousCount == null) ? 0 : currentCount - previousCount;
+      double changeRate = (previousCount == null || previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
+      trends.add(new EmployeeTrendDto(date, currentCount, change, changeRate));
+      previousCount = currentCount;
     }
 
-    List<Object[]> trendData;
-    // 상태별 조회 또는 전체 조회
-    if (status != null && !status.isEmpty()) {
-      try {
-        EmploymentStatus employmentStatus = EmploymentStatus.valueOf(status.toUpperCase());
-        trendData = employeeRepository.findEmployeeTrendsDataByStatus(employmentStatus, startDate, endDate);
-      } catch (IllegalArgumentException e) {
-        log.warn("잘못된 고용 상태: {}", status);
-        return new ArrayList<>();
+    return trends;
+
+  }
+
+
+
+  private LocalDate calculateStart(LocalDate to, String unit) {
+    return switch (unit.toLowerCase()) {
+      case "day" -> to.minusDays(12);
+      case "week" -> to.minusWeeks(12);
+      case "month" -> to.minusMonths(12);
+      case "year" -> to.minusYears(12).with(TemporalAdjusters.firstDayOfYear());
+      case "quarter" -> {
+        int quarterStart = ((to.getMonthValue() - 1) / 3) * 3 + 1;
+        yield to.withMonth(quarterStart).with(TemporalAdjusters.firstDayOfMonth());
       }
-    } else {
-      trendData = employeeRepository.findEmployeeTrendsData(startDate, endDate);
-    }
+      default -> to.minusMonths(12).with(TemporalAdjusters.firstDayOfMonth());
+    };
+  }
 
-    // Object[] 결과를 EmployeeTrendDto로 변환
-    return trendData.stream()
-        .map(data -> {
-          LocalDate date = (LocalDate) data[0];
-          Long count = (Long) data[1];
-          EmploymentStatus empStatus = (EmploymentStatus) data[2];
-          return new EmployeeTrendDto(date, count, empStatus.name());
-        })
-        .collect(Collectors.toList());
+  private List<LocalDate> generateDateRange(LocalDate from, LocalDate to, String unit) {
+    List<LocalDate> dates = new ArrayList<>();
+    LocalDate current = from;
+
+    while (!current.isAfter(to)) {
+      dates.add(current);
+      current = switch (unit.toLowerCase()) {
+        case "day" -> current.plusDays(1);
+        case "week" -> current.plusWeeks(1);
+        case "month" -> current.plusMonths(1);
+        case "year" -> current.plusYears(1);
+        case "quarter" -> current.plusMonths(3);
+        default -> current.plusMonths(1);
+      };
+    }
+    return dates;
   }
 
   @Override

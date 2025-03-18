@@ -95,7 +95,7 @@ public interface EmployeeService {
    */
   Page<EmployeeDto> getEmployeesByDepartment(Long departmentId, Pageable pageable);
 
-  List<EmployeeTrendDto> getEmployeeTrends(LocalDate startDate, LocalDate endDate, String status);
+  List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit);
 
   /**
    * 직원 분포 통계를 조회합니다.

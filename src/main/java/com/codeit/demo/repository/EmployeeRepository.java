@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSpecificationExecutor<Employee> {
+
   // 이메일로 직원 찾기
   Optional<Employee> findByEmail(String email);
 
@@ -30,8 +31,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       "WHERE (:nameOrEmail IS NULL OR " +
       "      e.name LIKE CONCAT('%', CAST(:nameOrEmail AS string), '%') OR " +
       "      e.email LIKE CONCAT('%', CAST(:nameOrEmail AS string), '%')) AND " +
-      "(:employeeNumber IS NULL OR e.employeeNumber LIKE CONCAT('%', CAST(:employeeNumber AS string), '%')) AND " +
-      "(:departmentName IS NULL OR d.name LIKE CONCAT('%', CAST(:departmentName AS string), '%')) AND " +
+      "(:employeeNumber IS NULL OR e.employeeNumber LIKE CONCAT('%', CAST(:employeeNumber AS string), '%')) AND "
+      +
+      "(:departmentName IS NULL OR d.name LIKE CONCAT('%', CAST(:departmentName AS string), '%')) AND "
+      +
       "(:position IS NULL OR e.position LIKE CONCAT('%', CAST(:position AS string), '%')) AND " +
       "(:hireDateFrom IS NULL OR e.hireDate >= :hireDateFrom) AND " +
       "(:hireDateTo IS NULL OR e.hireDate <= :hireDateTo) AND " +
@@ -46,24 +49,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("status") EmploymentStatus status,
       Pageable pageable);
 
-  @Query("SELECT e.hireDate as date, COUNT(e) as count, e.status as status " +
-      "FROM Employee e " +
-      "WHERE (e.hireDate BETWEEN :startDate AND :endDate) " +
-      "GROUP BY e.hireDate, e.status " +
-      "ORDER BY e.hireDate")
-  List<Object[]> findEmployeeTrendsData(
-      @Param("startDate") LocalDate startDate,
-      @Param("endDate") LocalDate endDate);
+  Optional<Employee> findByName(String name);
 
-  @Query("SELECT e.hireDate as date, COUNT(e) as count, e.status as status " +
-      "FROM Employee e " +
-      "WHERE (e.status = :status) AND (e.hireDate BETWEEN :startDate AND :endDate) " +
-      "GROUP BY e.hireDate " +
-      "ORDER BY e.hireDate")
-  List<Object[]> findEmployeeTrendsDataByStatus(
-      @Param("status") EmploymentStatus status,
-      @Param("startDate") LocalDate startDate,
-      @Param("endDate") LocalDate endDate);
+  @Query("SELECT COUNT(e.id) FROM Employee e " +
+      "WHERE e.hireDate <= :date AND e.status != 'RESIGNED'")
+  Integer findTotalCountNoResigned(@Param("date") LocalDate date);
 
   @Query("SELECT d.name, COUNT(e) FROM Employee e JOIN e.department d GROUP BY d.name ORDER BY COUNT(e) DESC")
   List<Object[]> countEmployeesByDepartment();

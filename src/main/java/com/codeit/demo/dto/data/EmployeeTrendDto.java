@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class EmployeeTrendDto {
   private LocalDate date;
-  private long count;
-  private String status; // ACTIVE, ON_LEAVE, RESIGNED 등
+  private int count;
+  private int change;
+  private double changeRate;
 }

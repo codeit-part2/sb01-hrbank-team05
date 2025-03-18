@@ -80,10 +80,12 @@ public class EmployeeController implements EmployeeApi {
       @RequestParam(defaultValue = "name") String sortField,
       @RequestParam(defaultValue = "asc") String sortDirection) {
 
-    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+    Sort.Direction direction =
+        "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
     PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
     Page<EmployeeDto> employeePage = employeeService.findAllEmployees(
-        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, status, pageable);
+        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, status,
+        pageable);
     return ResponseEntity.ok(employeePage);
   }
 
@@ -113,19 +115,17 @@ public class EmployeeController implements EmployeeApi {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size) {
     PageRequest pageable = PageRequest.of(page, size);
-    Page<EmployeeDto> employeePage = employeeService.getEmployeesByDepartment(departmentId, pageable);
+    Page<EmployeeDto> employeePage = employeeService.getEmployeesByDepartment(departmentId,
+        pageable);
     return ResponseEntity.ok(employeePage);
   }
 
   @Override
   @GetMapping("/stats/trend")
-  public ResponseEntity<List<EmployeeTrendDto>> getEmployeeTrend(
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-      @RequestParam(required = false) String status) {
-
-    List<EmployeeTrendDto> trends = employeeService.getEmployeeTrends(startDate, endDate, status);
-    return ResponseEntity.ok(trends);
+  public ResponseEntity<List<EmployeeTrendDto>> trend(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate to,
+      @RequestParam(defaultValue = "month") String unit){
+    List<EmployeeTrendDto> result=employeeService.findTrends(from, to, unit);
+    return ResponseEntity.ok(result);
   }
-
 }
