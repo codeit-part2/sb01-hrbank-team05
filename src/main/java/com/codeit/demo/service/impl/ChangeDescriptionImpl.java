@@ -1,5 +1,6 @@
 package com.codeit.demo.service.impl;
 
+import com.codeit.demo.dto.data.DiffDto;
 import com.codeit.demo.dto.request.EmployeeCreateRequest;
 import com.codeit.demo.dto.request.EmployeeUpdateRequest;
 import com.codeit.demo.entity.ChangeDescription;
@@ -15,6 +16,7 @@ import com.codeit.demo.repository.DepartmentRepository;
 import com.codeit.demo.service.ChangeDescriptionService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -104,6 +106,17 @@ public class ChangeDescriptionImpl implements ChangeDescriptionService {
     changeDescriptionRepository.saveAll(changeDescriptions);
   }
 
+  @Override
+  public List<DiffDto> findAllChangeDescriptionsByLogId(Long logId) {
+    if (!changeLogRepository.existsById(logId)) {
+      throw new NoSuchElementException("ChangeLog with id: " + logId + " not found");
+    }
+    List<ChangeDescription> changeDescriptions = changeDescriptionRepository.findAllByLogId(logId);
+    return changeDescriptions.stream()
+        .map(changeDescriptionMapper::toDto)
+        .toList();
+  }
+  
   // 변경된 속성 정보만 구하기
   private List<ChangeDetail> compareEmployeeChange(Employee employee,
       EmployeeUpdateRequest employeeUpdateRequest) {

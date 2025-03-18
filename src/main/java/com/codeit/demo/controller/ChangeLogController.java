@@ -12,6 +12,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,8 +26,10 @@ public class ChangeLogController implements ChangeLogApi {
   private final ChangeDescriptionService changeDescriptionService;
 
   @Override
-  public ResponseEntity<List<DiffDto>> findDescriptionsByLogId(Long id) {
-    return null;
+  @GetMapping("/{id}/diffs")
+  public ResponseEntity<List<DiffDto>> findDescriptionsByLogId(@PathVariable Long id) {
+    List<DiffDto> diffDtos = changeDescriptionService.findAllChangeDescriptionsByLogId(id);
+    return ResponseEntity.ok(diffDtos);
   }
 
   @GetMapping("")
