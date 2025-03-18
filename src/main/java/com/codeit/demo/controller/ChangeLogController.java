@@ -29,11 +29,21 @@ public class ChangeLogController implements ChangeLogApi {
     return null;
   }
 
-  @Override
-  public ResponseEntity<CursorPageResponseChangeLogDto<ChangeLogDto>> findAll(String employeeNumber,
-      ChangeType type, String memo, String ipAddress, Instant atFrom, Instant atTo, Long idAfter,
-      Object cursor, int size, String sortField, String sortDirection) {
-    return null;
+  @GetMapping("")
+  public ResponseEntity<CursorPageResponseChangeLogDto<ChangeLogDto>> findAll(
+      @RequestParam(required = false) String employeeNumber, @RequestParam(required = false)
+  ChangeType type, @RequestParam(required = false) String memo,
+      @RequestParam(required = false) String ipAddress,
+      @RequestParam(required = false) Instant atFrom,
+      @RequestParam(required = false) Instant atTo,
+      @RequestParam(required = false) Long idAfter, @RequestParam(required = false) Object cursor,
+      @RequestParam(defaultValue = "10") int size,
+      @RequestParam(defaultValue = "at") String sortField,
+      @RequestParam(defaultValue = "desc") String sortDirection) {
+    CursorPageResponseChangeLogDto<ChangeLogDto> result = changeLogService.findAll(employeeNumber,
+        type, memo
+        , ipAddress, atFrom, atTo, idAfter, cursor, size, sortField, sortDirection);
+    return ResponseEntity.ok(result);
   }
 
   @GetMapping("/count")
