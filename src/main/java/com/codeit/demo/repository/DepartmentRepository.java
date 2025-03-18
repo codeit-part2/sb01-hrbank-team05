@@ -15,16 +15,6 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
   Page<Department> findByNameContainingOrDescriptionContaining(
       String name, String description, Pageable pageable);
 
-  Page<Department> findByNameContainingOrDescriptionContainingAndIdGreaterThan(
-      String name, String description, Long id, Pageable pageable);
-
-  Page<Department> findByNameContainingOrDescriptionContainingAndIdLessThan(
-      String name, String description, Long id, Pageable pageable);
-
-  Page<Department> findByIdGreaterThan(Long id, Pageable pageable);
-
-  Page<Department> findByIdLessThan(Long id, Pageable pageable);
-
   @Modifying
   @Query("UPDATE Department d SET d.employeeCount = COALESCE(d.employeeCount, 0) + 1 WHERE d.id = :departmentId")
   void incrementEmployeeCount(@Param("departmentId") Long departmentId);

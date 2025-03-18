@@ -14,7 +14,6 @@ import lombok.Setter;
 
 @Entity
 @Getter
-@Setter
 @Table(name = "update_description")
 public class UpdateDescription {
 

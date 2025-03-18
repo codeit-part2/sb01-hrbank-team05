@@ -18,7 +18,6 @@ import lombok.Setter;
 
 @Entity
 @Getter
-@Setter
 @Table(name = "backup")
 public class Backup {
 

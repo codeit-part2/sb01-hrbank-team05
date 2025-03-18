@@ -3,7 +3,6 @@ package com.codeit.demo.service.impl;
 import com.codeit.demo.dto.data.DepartmentDto;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
-import com.codeit.demo.dto.response.CursorPageResponse;
 import com.codeit.demo.entity.Department;
 import com.codeit.demo.exception.DepartmentNotFoundException;
 import com.codeit.demo.mapper.DepartmentMapper;
@@ -14,6 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -29,61 +29,19 @@ public class DepartmentServiceImpl implements DepartmentService {
   private final EmployeeRepository employeeRepository;
   private final DepartmentMapper departmentMapper;
 
+
   @Override
   @Transactional(readOnly = true)
-  public CursorPageResponse<DepartmentDto> getAllDepartments(Long cursor, int size, String nameOrDescription,
-      String sortField, String sortDirection) {
-    if (size <= 0) {
-      size = 10; // 기본 페이지 크기
-    }
-
-    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-    String field = "establishedDate";
-    if ("name".equals(sortField)) {
-      field = "name";
-    }
-
-    Sort sort = Sort.by(direction, field);
-    Pageable pageable = PageRequest.of(0, size + 1, sort);
-
-    List<Department> departments;
-    if (cursor == null) {
-      if (nameOrDescription != null && !nameOrDescription.isEmpty()) {
-        departments = departmentRepository.findByNameContainingOrDescriptionContaining(
-            nameOrDescription, nameOrDescription, pageable).getContent();
-      } else {
-        departments = departmentRepository.findAll(pageable).getContent();
-      }
+  public Page<DepartmentDto> getAllDepartments(String nameOrDescription, Pageable pageable) {
+    Page<Department> departmentPage;
+    if (nameOrDescription != null && !nameOrDescription.isEmpty()) {
+      departmentPage = departmentRepository.findByNameContainingOrDescriptionContaining(
+          nameOrDescription, nameOrDescription, pageable);
     } else {
-      Department reference = departmentRepository.findById(cursor)
-          .orElseThrow(() -> new DepartmentNotFoundException("부서를 찾을 수 없습니다."));
-
-      if (nameOrDescription != null && !nameOrDescription.isEmpty()) {
-        if (direction == Sort.Direction.ASC) {
-          departments = departmentRepository.findByNameContainingOrDescriptionContainingAndIdGreaterThan(
-              nameOrDescription, nameOrDescription, cursor, pageable).getContent();
-        } else {
-          departments = departmentRepository.findByNameContainingOrDescriptionContainingAndIdLessThan(
-              nameOrDescription, nameOrDescription, cursor, pageable).getContent();
-        }
-      } else {
-        if (direction == Sort.Direction.ASC) {
-          departments = departmentRepository.findByIdGreaterThan(cursor, pageable).getContent();
-        } else {
-          departments = departmentRepository.findByIdLessThan(cursor, pageable).getContent();
-        }
-      }
+      departmentPage = departmentRepository.findAll(pageable);
     }
 
-    boolean hasNext = departments.size() > size;
-    List<Department> content = hasNext ? departments.subList(0, size) : departments;
-    Long nextCursor = hasNext && !content.isEmpty() ? content.get(content.size() - 1).getId() : null;
-
-    List<DepartmentDto> departmentDtos = content.stream()
-        .map(departmentMapper::toDto)
-        .collect(Collectors.toList());
-
-    return new CursorPageResponse<>(departmentDtos, nextCursor, hasNext);
+    return departmentPage.map(departmentMapper::toDto);
   }
 
   @Override

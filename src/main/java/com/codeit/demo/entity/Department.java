@@ -31,7 +31,7 @@ public class Department {
   private LocalDate establishedDate;
 
   @Column(name = "employee_count")
-  private Integer employeeCount;
+  private int employeeCount;
 
   public Department() {
   }

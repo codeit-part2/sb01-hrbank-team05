@@ -5,6 +5,7 @@ import com.codeit.demo.entity.enums.EmploymentStatus;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -17,18 +18,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
   // 이메일로 직원 찾기
   Optional<Employee> findByEmail(String email);
 
-  // 페이지네이션 (커서 기반)을 위한 메서드들
-  List<Employee> findByOrderByIdDesc(Pageable pageable);
-  List<Employee> findByIdLessThanOrderByIdDesc(Long id, Pageable pageable);
-
-  // 부서별 조회 메서드들
-  List<Employee> findByDepartmentIdOrderByIdDesc(Long departmentId, Pageable pageable);
-  List<Employee> findByDepartmentIdAndIdLessThanOrderByIdDesc(Long departmentId, Long id, Pageable pageable);
+  // 부서별 조회
+  Page<Employee> findByDepartmentId(Long departmentId, Pageable pageable);
 
   Long countByDepartmentId(Long departmentId);
 
   Optional<Employee> findTopByEmployeeNumberLikeOrderByEmployeeNumberDesc(String pattern);
-
 
   @Query("SELECT e FROM Employee e " +
       "LEFT JOIN e.department d " +
@@ -40,9 +35,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       "(:position IS NULL OR e.position LIKE CONCAT('%', CAST(:position AS string), '%')) AND " +
       "(:hireDateFrom IS NULL OR e.hireDate >= :hireDateFrom) AND " +
       "(:hireDateTo IS NULL OR e.hireDate <= :hireDateTo) AND " +
-      "(:status IS NULL OR e.status = :status) AND " +
-      "(:idAfter IS NULL OR e.id > :idAfter)")
-  List<Employee> findEmployeesWithAdvancedFilters(
+      "(:status IS NULL OR e.status = :status)")
+  Page<Employee> findEmployeesWithAdvancedFilters(
       @Param("nameOrEmail") String nameOrEmail,
       @Param("employeeNumber") String employeeNumber,
       @Param("departmentName") String departmentName,
@@ -50,7 +44,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("hireDateFrom") LocalDate hireDateFrom,
       @Param("hireDateTo") LocalDate hireDateTo,
       @Param("status") EmploymentStatus status,
-      @Param("idAfter") Long idAfter,
       Pageable pageable);
 
   @Query("SELECT e.hireDate as date, COUNT(e) as count, e.status as status " +
@@ -72,7 +65,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("startDate") LocalDate startDate,
       @Param("endDate") LocalDate endDate);
 
-  // EmployeeRepository.java에 추가
   @Query("SELECT d.name, COUNT(e) FROM Employee e JOIN e.department d GROUP BY d.name ORDER BY COUNT(e) DESC")
   List<Object[]> countEmployeesByDepartment();
 
@@ -81,5 +73,4 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
   @Query("SELECT e.status, COUNT(e) FROM Employee e GROUP BY e.status ORDER BY COUNT(e) DESC")
   List<Object[]> countEmployeesByStatus();
-
-  }
+}

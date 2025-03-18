@@ -1,5 +1,6 @@
 package com.codeit.demo.dto.request;
 
+import com.codeit.demo.entity.enums.EmploymentStatus;
 import jakarta.validation.constraints.NotBlank;
 
 public record EmployeeUpdateRequest(
@@ -8,13 +9,13 @@ public record EmployeeUpdateRequest(
     @NotBlank(message = "Email is required")
     String email,
     @NotBlank(message = "Department is required")
-    Integer departmentId,
+    Long departmentId,
     @NotBlank(message = "Position is required")
     String position,
     @NotBlank(message = "HireDate is required")
     String hireDate,
     @NotBlank(message = "Status is required")
-    String status,
+    EmploymentStatus status,
     String memo
 ) {
 

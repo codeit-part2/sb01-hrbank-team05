@@ -3,22 +3,12 @@ package com.codeit.demo.service;
 import com.codeit.demo.dto.data.DepartmentDto;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
-import com.codeit.demo.dto.response.CursorPageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface DepartmentService {
 
-  /**
-   * 모든 부서 목록을 페이징해서 조회합니다.
-   *
-   * @param cursor 커서 (다음 페이지 시작점)
-   * @param size 페이지 크기
-   * @param nameOrDescription 부서 이름 또는 설명으로 검색
-   * @param sortField 정렬 필드 (name 또는 establishedDate)
-   * @param sortDirection 정렬 방향 (asc 또는 desc)
-   * @return 페이징된 부서 목록
-   */
-  CursorPageResponse<DepartmentDto> getAllDepartments(Long cursor, int size, String nameOrDescription,
-      String sortField, String sortDirection);
+  Page<DepartmentDto> getAllDepartments(String nameOrDescription, Pageable pageable);
 
   /**
    * ID로 부서 정보를 조회합니다.

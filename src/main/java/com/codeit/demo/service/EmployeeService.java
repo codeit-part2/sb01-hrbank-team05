@@ -5,10 +5,11 @@ import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
 import com.codeit.demo.dto.request.EmployeeCreateRequest;
 import com.codeit.demo.dto.request.EmployeeUpdateRequest;
-import com.codeit.demo.dto.response.CursorPageResponse;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface EmployeeService {
@@ -33,11 +34,8 @@ public interface EmployeeService {
   /**
    * 모든 직원 목록을 페이지네이션하여 조회합니다.
    *
-   * @param cursor 커서 ID (첫 페이지는 null)
-   * @param size 페이지 크기
-   * @return 커서 기반 페이지 응답
    */
-  CursorPageResponse<EmployeeDto> getAllEmployees(
+  Page<EmployeeDto> findAllEmployees(
       String nameOrEmail,
       String employeeNumber,
       String departmentName,
@@ -45,11 +43,7 @@ public interface EmployeeService {
       LocalDate hireDateFrom,
       LocalDate hireDateTo,
       String status,
-      Long idAfter,
-      String cursor,
-      int size,
-      String sortField,
-      String sortDirection);
+      Pageable pageable);
 
 
 
@@ -98,12 +92,8 @@ public interface EmployeeService {
   /**
    * 부서 ID로 직원 목록을 조회합니다.
    *
-   * @param departmentId 부서 ID
-   * @param cursor 커서 ID
-   * @param size 페이지 크기
-   * @return 커서 기반 페이지 응답
    */
-  CursorPageResponse<EmployeeDto> getEmployeesByDepartment(Long departmentId, Long cursor, int size);
+  Page<EmployeeDto> getEmployeesByDepartment(Long departmentId, Pageable pageable);
 
   List<EmployeeTrendDto> getEmployeeTrends(LocalDate startDate, LocalDate endDate, String status);
 

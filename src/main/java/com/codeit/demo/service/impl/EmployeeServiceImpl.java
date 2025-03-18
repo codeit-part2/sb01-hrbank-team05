@@ -5,7 +5,6 @@ import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
 import com.codeit.demo.dto.request.EmployeeCreateRequest;
 import com.codeit.demo.dto.request.EmployeeUpdateRequest;
-import com.codeit.demo.dto.response.CursorPageResponse;
 import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.entity.Department;
 import com.codeit.demo.entity.Employee;
@@ -29,6 +28,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -64,7 +64,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     // 사원번호 자동 생성
     employee.setEmployeeNumber(generateEmployeeNumber());
 
-    // 이메일 중복 검사
+    // 이메일 중복 검사 @Transactional(readOnly = true)
     if (employeeRepository.findByEmail(request.email()).isPresent()) {
       throw new DuplicateEmailException("이메일이 이미 사용 중입니다: " + request.email());
     }
@@ -77,7 +77,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     // 프로필 이미지가 제공된 경우에만 처리
     if (file != null && !file.isEmpty()) {
 
-      BinaryContent savedFile = binaryContentService.create(file);
+      BinaryContent savedFile = binaryContentService.createBinaryContent(file);
       employee.setProfileImage(savedFile);
     }
     // 생성된 직원의 부서가 있으면 직원 수 증가
@@ -95,14 +95,14 @@ public class EmployeeServiceImpl implements EmployeeService {
   @Override
   @Transactional(readOnly = true)
   public EmployeeDto getEmployeeById(Long id) {
-    log.info("Getting employee with ID: {}", id);
     return employeeRepository.findById(id)
         .map(employeeMapper::employeeToEmployeeDto)
         .orElseThrow(() -> new EmployeeNotFoundException("직원을 찾을 수 없습니다: " + id));
   }
 
   @Override
-  public CursorPageResponse<EmployeeDto> getAllEmployees(
+  @Transactional(readOnly = true)
+  public Page<EmployeeDto> findAllEmployees(
       String nameOrEmail,
       String employeeNumber,
       String departmentName,
@@ -110,75 +110,20 @@ public class EmployeeServiceImpl implements EmployeeService {
       LocalDate hireDateFrom,
       LocalDate hireDateTo,
       String status,
-      Long idAfter,
-      String cursor,
-      int size,
-      String sortField,
-      String sortDirection) {
+      Pageable pageable) {
 
-    // 정렬 방향 설정
-    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-
-    // 정렬 필드 설정
-    String sortProperty;
-    switch (sortField.toLowerCase()) {
-      case "employeenumber":
-        sortProperty = "employeeNumber";
-        break;
-      case "hiredate":
-        sortProperty = "hireDate";
-        break;
-      case "position":
-        sortProperty = "position"; // position 정렬 옵션 추가
-        break;
-      case "name":
-      default:
-        sortProperty = "name";
-        break;
-    }
-
-    // 페이지 및 정렬 정보 설정
-    Sort sort = Sort.by(direction, sortProperty);
-    Pageable pageable = PageRequest.of(0, size + 1, sort);
-
-    // 상태 열거형 변환
     EmploymentStatus statusEnum = status != null ? convertStatusString(status) : null;
 
-    // 필터링된 직원 목록 가져오기
-    List<Employee> employees = employeeRepository.findEmployeesWithAdvancedFilters(
-        nameOrEmail,
-        employeeNumber,
-        departmentName,
-        position,
-        hireDateFrom,
-        hireDateTo,
-        statusEnum,
-        idAfter,
-        pageable);
+    Page<Employee> employeePage = employeeRepository.findEmployeesWithAdvancedFilters(
+        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, statusEnum, pageable);
 
-    // 결과 처리 및 반환
-    boolean hasNext = false;
-    if (employees.size() > size) {
-      hasNext = true;
-      employees = employees.subList(0, size);
-    }
-
-    List<EmployeeDto> employeeDtos = employees.stream()
-        .map(employeeMapper::employeeToEmployeeDto)
-        .collect(Collectors.toList());
-
-    // 다음 커서 생성 (ID 기반)
-    Long nextCursor = hasNext && !employees.isEmpty() ?
-        employees.get(employees.size() - 1).getId() : null;
-
-    return new CursorPageResponse<>(employeeDtos, nextCursor, hasNext);
+    return employeePage.map(employeeMapper::employeeToEmployeeDto);
   }
 
   private EmploymentStatus convertStatusString(String statusStr) {
     if (statusStr == null) {
       return null;
     }
-
     try {
       return EmploymentStatus.valueOf(statusStr.toUpperCase());
     } catch (IllegalArgumentException e) {
@@ -186,6 +131,7 @@ public class EmployeeServiceImpl implements EmployeeService {
       return null;
     }
   }
+
 
   // 커서 생성 헬퍼 메소드
   private String buildCursor(Employee employee, String sortField) {
@@ -261,7 +207,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     // 새 이미지 저장
-    BinaryContent savedFile = binaryContentService.create(file);
+    BinaryContent savedFile = binaryContentService.createBinaryContent(file);
     employee.setProfileImage(savedFile);
 
     Employee updatedEmployee = employeeRepository.save(employee);
@@ -306,32 +252,17 @@ public class EmployeeServiceImpl implements EmployeeService {
 
   @Override
   @Transactional(readOnly = true)
-  public CursorPageResponse<EmployeeDto> getEmployeesByDepartment(Long departmentId, Long cursor, int size) {
-    log.info("Getting employees by department ID: {} with cursor: {}, size: {}", departmentId, cursor, size);
+  public Page<EmployeeDto> getEmployeesByDepartment(Long departmentId, Pageable pageable) {
+    log.info("Getting employees by department ID: {} with pageable: {}", departmentId, pageable);
 
-    // 부서 존재 여부 확인
     if (!departmentRepository.existsById(departmentId)) {
       throw new DepartmentNotFoundException("부서를 찾을 수 없습니다: " + departmentId);
     }
 
-    List<Employee> employees;
-    if (cursor == null) {
-      employees = employeeRepository.findByDepartmentIdOrderByIdDesc(departmentId, PageRequest.of(0, size));
-    } else {
-      employees = employeeRepository.findByDepartmentIdAndIdLessThanOrderByIdDesc(departmentId, cursor, PageRequest.of(0, size));
-    }
-
-    List<EmployeeDto> employeeDtos = employees.stream()
-        .map(employeeMapper::employeeToEmployeeDto)
-        .collect(Collectors.toList());
-
-    Long nextCursor = null;
-    if (!employees.isEmpty()) {
-      nextCursor = CursorPageUtil.getNextCursor(employees, Employee::getId, size);
-    }
-
-    return new CursorPageResponse<>(employeeDtos, nextCursor);
+    Page<Employee> employeePage = employeeRepository.findByDepartmentId(departmentId, pageable);
+    return employeePage.map(employeeMapper::employeeToEmployeeDto);
   }
+
 
   @Override
   @Transactional(readOnly = true)

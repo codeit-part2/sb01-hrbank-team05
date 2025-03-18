@@ -1,35 +1,29 @@
 package com.codeit.demo.controller;
 
-import com.codeit.demo.dto.data.EmployeeDistributionDto;
+import com.codeit.demo.controller.api.EmployeeApi;
 import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
 import com.codeit.demo.dto.request.EmployeeCreateRequest;
 import com.codeit.demo.dto.request.EmployeeUpdateRequest;
-import com.codeit.demo.dto.response.CursorPageResponse;
 import com.codeit.demo.service.EmployeeService;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/employees")
-public class EmployeeController {
+public class EmployeeController implements EmployeeApi {
 
   private final EmployeeService employeeService;
 
@@ -37,6 +31,7 @@ public class EmployeeController {
     this.employeeService = employeeService;
   }
 
+  @Override
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<EmployeeDto> createEmployee(
       @RequestPart("employee") EmployeeCreateRequest request,
@@ -46,7 +41,7 @@ public class EmployeeController {
     return new ResponseEntity<>(createdEmployee, HttpStatus.CREATED);
   }
 
-
+  @Override
   @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<EmployeeDto> updateEmployee(
       @PathVariable Long id,
@@ -64,13 +59,15 @@ public class EmployeeController {
     return ResponseEntity.ok(updatedEmployee);
   }
 
+  @Override
   @GetMapping("/{id}")
   public ResponseEntity<EmployeeDto> getEmployeeById(@PathVariable Long id) {
     return ResponseEntity.ok(employeeService.getEmployeeById(id));
   }
 
+  @Override
   @GetMapping
-  public ResponseEntity<CursorPageResponse<EmployeeDto>> getAllEmployees(
+  public ResponseEntity<Page<EmployeeDto>> getAllEmployees(
       @RequestParam(required = false) String nameOrEmail,
       @RequestParam(required = false) String employeeNumber,
       @RequestParam(required = false) String departmentName,
@@ -78,18 +75,19 @@ public class EmployeeController {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireDateFrom,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireDateTo,
       @RequestParam(required = false) String status,
-      @RequestParam(required = false) Long idAfter,
-      @RequestParam(required = false) String cursor,
+      @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(defaultValue = "name") String sortField,
       @RequestParam(defaultValue = "asc") String sortDirection) {
 
-    return ResponseEntity.ok(employeeService.getAllEmployees(
-        nameOrEmail, employeeNumber, departmentName, position,
-        hireDateFrom, hireDateTo, status, idAfter, cursor,
-        size, sortField, sortDirection));
+    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+    PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+    Page<EmployeeDto> employeePage = employeeService.findAllEmployees(
+        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, status, pageable);
+    return ResponseEntity.ok(employeePage);
   }
 
+  @Override
   @GetMapping("/count")
   public ResponseEntity<Long> getEmployeeCount(
       @RequestParam(required = false) String status,
@@ -101,20 +99,25 @@ public class EmployeeController {
   }
 
 
+  @Override
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
     employeeService.deleteEmployee(id);
     return ResponseEntity.noContent().build();
   }
 
+  @Override
   @GetMapping("/department/{departmentId}")
-  public ResponseEntity<CursorPageResponse<EmployeeDto>> getEmployeesByDepartment(
+  public ResponseEntity<Page<EmployeeDto>> getEmployeesByDepartment(
       @PathVariable Long departmentId,
-      @RequestParam(value = "cursor", required = false) Long cursor,
-      @RequestParam(value = "size", defaultValue = "10") int size) {
-    return ResponseEntity.ok(employeeService.getEmployeesByDepartment(departmentId, cursor, size));
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size) {
+    PageRequest pageable = PageRequest.of(page, size);
+    Page<EmployeeDto> employeePage = employeeService.getEmployeesByDepartment(departmentId, pageable);
+    return ResponseEntity.ok(employeePage);
   }
 
+  @Override
   @GetMapping("/stats/trend")
   public ResponseEntity<List<EmployeeTrendDto>> getEmployeeTrend(
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -123,18 +126,6 @@ public class EmployeeController {
 
     List<EmployeeTrendDto> trends = employeeService.getEmployeeTrends(startDate, endDate, status);
     return ResponseEntity.ok(trends);
-  }
-
-  /**
-   * 직원 분포 통계 조회
-   *
-   * @param groupBy 그룹화 기준 (department, position, status)
-   * @return 직원 분포 통계
-   */
-  @GetMapping("/stats/distribution")
-  public ResponseEntity<List<EmployeeDistributionDto>> getEmployeeDistribution(
-      @RequestParam(defaultValue = "department") String groupBy) {
-    return ResponseEntity.ok(employeeService.getEmployeeDistribution(groupBy));
   }
 
 }

@@ -1,6 +1,7 @@
 package com.codeit.demo.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import java.time.LocalDate;
 
 
 public record EmployeeCreateRequest(
@@ -13,7 +14,7 @@ public record EmployeeCreateRequest(
     @NotBlank(message = "Position is required")
     String position,
     @NotBlank(message = "HireDate is required")
-    String hireDate,
+    LocalDate hireDate,
     String memo
 ) {
 

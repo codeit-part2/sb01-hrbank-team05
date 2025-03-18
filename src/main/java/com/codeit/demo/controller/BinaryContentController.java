@@ -4,9 +4,6 @@ import com.codeit.demo.controller.api.BinaryContentApi;
 import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.service.BinaryContentService;
 import com.codeit.demo.storage.BinaryContentStorage;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +13,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/files")
@@ -29,7 +30,7 @@ public class BinaryContentController implements BinaryContentApi {
       throws IOException {
     List<BinaryContent> savedFiles = new ArrayList<>();
     for (MultipartFile file : files) {
-      BinaryContent savedContent = binaryContentService.create(file);
+      BinaryContent savedContent = binaryContentService.createBinaryContent(file);
       savedFiles.add(savedContent);
     }
     return ResponseEntity.ok(savedFiles);

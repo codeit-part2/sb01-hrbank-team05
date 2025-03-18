@@ -1,5 +1,6 @@
 package com.codeit.demo.dto.response;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,8 +10,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ApiResponse<T> {
-  private boolean success;
+public class ErrorResponse<T> {
+  private LocalDateTime timestamp;
+  private int status;
   private String message;
-  private T data;
+  private String details;
 }

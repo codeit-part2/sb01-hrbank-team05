@@ -20,7 +20,6 @@ public interface DepartmentMapper {
    * @param department 변환할 부서 엔티티
    * @return 변환된 부서 DTO
    */
-  @Mapping(target = "establishedDate", expression = "java(department.getEstablishedDate() != null ? department.getEstablishedDate().atStartOfDay() : null)")
   DepartmentDto toDto(Department department);
 
   /**
