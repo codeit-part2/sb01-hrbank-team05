@@ -18,6 +18,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -49,7 +51,8 @@ public class Employee {
   private LocalDate hireDate;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "status", nullable = false, columnDefinition = "employment_status")
   private EmploymentStatus status;
 
   @CreatedDate
