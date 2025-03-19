@@ -9,13 +9,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Getter
 @Table(name = "change_log")
+@NoArgsConstructor
+@Getter
 public class ChangeLog {
 
   @Id
@@ -23,20 +24,28 @@ public class ChangeLog {
   private Long id;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @Column(name = "type", nullable = false)
   private ChangeType type;
 
   @Column(name = "employee_number", nullable = false, length = 50)
   private String employeeNumber;
 
-  @Column(length = 255)
+  @Column(nullable = true, length = 255)
   private String memo;
 
   @Column(name = "ip_address", length = 255)
   private String ipAddress;
 
-  @Column(name = "at", nullable = false)
-  private ZonedDateTime at;
+  @Column(nullable = false)
+  private Instant at;
 
-  // Getters and Setters
+  public ChangeLog(ChangeType type, String employeeNumber, String memo, String ipAddress,
+      Instant at) {
+    this.type = type;
+    this.employeeNumber = employeeNumber;
+    this.memo = memo;
+    this.ipAddress = ipAddress;
+    this.at = at;
+  }
+
 }
