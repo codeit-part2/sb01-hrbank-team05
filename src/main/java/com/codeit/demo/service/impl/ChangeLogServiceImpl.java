@@ -108,12 +108,8 @@ public class ChangeLogServiceImpl implements ChangeLogService {
       Instant atFrom, Instant atTo, Long idAfter, Object cursor,
       int size, String sortField, String sortDirection) {
 
-    // 타입 변환 (NULL 체크)
-    String typeStr = (type == null) ? "ALL" : type.toString();
-    // 정렬 필드 매핑 (native_query용)
-    if ("ipAddress".equals(sortField)) {
-      sortField = "ip_address";
-    }
+    // 타입 변환(enum ChangeType -> String)
+    String typeStr = (type != null) ? type.toString() : null;
 
     // Pageable 생성
     Sort.Direction direction = Sort.Direction.fromString(sortDirection);
@@ -130,20 +126,14 @@ public class ChangeLogServiceImpl implements ChangeLogService {
       switch (sortField) {
         case "at":
           Instant cursorTime = getCursorTime(cursor);
-          page = "desc".equals(sortDirection)
-              ? changeLogRepository.findAllWithCursorAtDesc(employeeNumber, typeStr, ipAddress,
-              memo, atFrom, atTo, idAfter, cursorTime, pageable)
-              : changeLogRepository.findAllWithCursorAtAsc(employeeNumber, typeStr, ipAddress, memo,
-                  atFrom, atTo, idAfter, cursorTime, pageable);
+          page = changeLogRepository.findAllWithCursorAt(employeeNumber, typeStr, ipAddress, memo,
+              atFrom, atTo, idAfter, cursorTime, sortDirection, pageable);
           break;
 
-        case "ip_address":
+        case "ipAddress":
           String cursorIp = getCursorIpAddress(idAfter);
-          page = "desc".equals(sortDirection)
-              ? changeLogRepository.findAllWithCursorIpAddressDesc(employeeNumber, typeStr, memo,
-              ipAddress, atFrom, atTo, idAfter, cursorIp, pageable)
-              : changeLogRepository.findAllWithCursorIpAddressAsc(employeeNumber, typeStr, memo,
-                  ipAddress, atFrom, atTo, idAfter, cursorIp, pageable);
+          page = changeLogRepository.findAllWithCursorIpAddress(employeeNumber, typeStr, memo,
+              ipAddress, atFrom, atTo, idAfter, cursorIp, sortDirection, pageable);
           break;
 
         default:

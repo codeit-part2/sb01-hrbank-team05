@@ -70,6 +70,6 @@ public interface ChangeLogApi {
       @Parameter(description = "이전 페이지 마지막 요소 ID") @RequestParam(required = false) Long idAfter,
       @Parameter(description = "커서 (이전 페이지의 마지막 ID)") @RequestParam(required = false) Object cursor,
       @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "10") int size,
-      @Parameter(description = "대상 직원 사번") @RequestParam(defaultValue = "at") String sortField,
-      @Parameter(description = "대상 직원 사번") @RequestParam(defaultValue = "desc") String sortDirection);
+      @Parameter(description = "정렬 필드(ipAddress, at)") @RequestParam(defaultValue = "at") String sortField,
+      @Parameter(description = "정렬 방향(asc, desc)") @RequestParam(defaultValue = "desc") String sortDirection);
 }

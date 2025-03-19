@@ -13,7 +13,6 @@ import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.Type;
 import org.hibernate.type.SqlTypes;
 
 @Entity
@@ -27,6 +26,7 @@ public class ChangeLog {
   private Long id;
 
   @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   @Column(name = "type", nullable = false)
   private ChangeType type;
 
