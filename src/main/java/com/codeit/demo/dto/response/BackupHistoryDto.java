@@ -1,6 +1,6 @@
 package com.codeit.demo.dto.response;
 
-import com.codeit.demo.entity.BackupHistory;
+import com.codeit.demo.entity.Backup;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,12 +16,12 @@ public class BackupHistoryDto {
   private String status;
   private Long fileId; // fileId로 파일 정보 관리
 
-  public BackupHistoryDto(BackupHistory backupHistory) {
+  public BackupHistoryDto(Backup backupHistory) {
     this.id = backupHistory.getId();
     this.worker = backupHistory.getWorker();
     this.startTime = backupHistory.getStartedAt();
     this.endTime = backupHistory.getEndedAt();
-    this.status = String.valueOf(backupHistory.getBackupHistoryStatus());
-    this.fileId = backupHistory.getFileId(); // fileId 설정
+    this.status = String.valueOf(backupHistory.getStatus());
+    this.fileId = backupHistory.getFile().getId(); // fileId 설정
   }
 }

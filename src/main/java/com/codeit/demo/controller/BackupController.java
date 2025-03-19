@@ -2,8 +2,8 @@ package com.codeit.demo.controller;
 
 import com.codeit.demo.dto.response.BackupHistoryDto;
 import com.codeit.demo.dto.response.CursorPageResponseBackupDto;
-import com.codeit.demo.entity.enums.BackupHistoryStatus;
-import com.codeit.demo.service.impl.BackupHistoryServiceImpl;
+import com.codeit.demo.entity.enums.BackupStatus;
+import com.codeit.demo.service.impl.BackupServiceImpl;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.LocalDateTime;
@@ -17,10 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/backups")
-public class BackupHistoryController {
+public class BackupController {
 
   @Autowired
-  private BackupHistoryServiceImpl backupHistoryService;
+  private BackupServiceImpl backupService;
 
   @PostMapping("")
   public ResponseEntity<String> createBackup() {
@@ -30,14 +30,14 @@ public class BackupHistoryController {
     } catch (UnknownHostException e) {
       throw new RuntimeException(e);
     }
-    backupHistoryService.performBackup(localIp);
+    backupService.performBackup(localIp);
     return ResponseEntity.ok("백업 생성이 시작되었습니다.");
   }
 
   @GetMapping("")
   public ResponseEntity<CursorPageResponseBackupDto<?>> getBackupHistory(
       @RequestParam(required = false) String worker,
-      @RequestParam(required = false) BackupHistoryStatus status,
+      @RequestParam(required = false) BackupStatus status,
       @RequestParam(required = false) LocalDateTime startedAtFrom,
       @RequestParam(required = false) LocalDateTime startedAtTo,
       @RequestParam(required = false) Long idAfter,
@@ -46,7 +46,7 @@ public class BackupHistoryController {
       @RequestParam(defaultValue = "startedAt") String sortField,
       @RequestParam(defaultValue = "DESC") String sortDirection) {
 
-    CursorPageResponseBackupDto<?> response = backupHistoryService.getBackupHistory(
+    CursorPageResponseBackupDto<?> response = backupService.getBackupHistory(
         worker, status, startedAtFrom, startedAtTo, idAfter, cursor, size, sortField, sortDirection);
 
     return ResponseEntity.ok(response);
@@ -54,8 +54,8 @@ public class BackupHistoryController {
 
   @GetMapping("/latest")
   public ResponseEntity<BackupHistoryDto> getLatestBackup(
-      @RequestParam(required = false) BackupHistoryStatus status) {
-    BackupHistoryDto latestBackup = backupHistoryService.getLatestBackup(status);
+      @RequestParam(required = false) BackupStatus status) {
+    BackupHistoryDto latestBackup = backupService.getLatestBackup(status);
     return ResponseEntity.ok(latestBackup);
   }
 }

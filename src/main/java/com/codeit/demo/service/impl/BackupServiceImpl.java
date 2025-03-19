@@ -1,12 +1,17 @@
 package com.codeit.demo.service.impl;
 
+import static com.codeit.demo.entity.enums.BackupStatus.COMPLETED;
+
 import com.codeit.demo.dto.response.BackupHistoryDto;
 import com.codeit.demo.dto.response.CursorPageResponseBackupDto;
-import com.codeit.demo.entity.BackupHistory;
+import com.codeit.demo.entity.Backup;
+import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.entity.Employee;
-import com.codeit.demo.entity.enums.BackupHistoryStatus;
-import com.codeit.demo.repository.BackupHistoryRepository;
+import com.codeit.demo.entity.enums.BackupStatus;
+import com.codeit.demo.repository.BackupRepository;
+import com.codeit.demo.repository.BinaryContentRepository;
 import com.codeit.demo.repository.EmployeeRepository;
+import com.codeit.demo.storage.BinaryContentStorage;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -26,14 +31,14 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class BackupHistoryServiceImpl {
-  private final BackupHistoryRepository backupHistoryRepository;
+public class BackupServiceImpl {
+  private final BackupRepository backupRepository;
   private final EmployeeRepository employeeRepository;
+  private final BinaryContentServiceImpl binaryContentService;
+  private final BinaryContentStorage binaryContentStorage;
   private String backupDirectory = "./hrbank05/file/backup";
 
   //자동 배치 시스템 시간 단위
-  @Value("${backup.batch.interval}")
-  private long backupInterval;
 
   @Scheduled(fixedRateString = "${backup.batch.interval}")
   public void scheduledBackup() {
@@ -44,39 +49,39 @@ public class BackupHistoryServiceImpl {
   // 1. 데이터 백업 필요 여부를 판단
   public boolean isBackupNeeded() {
     // 가장 최근 완료된 백업 이력 조회
-    Optional<BackupHistory> lastBackup = backupHistoryRepository.findTopByStatusOrderByEndTimeDesc("완료");
+    Optional<Backup> lastBackup = backupRepository.findTopByStatusOrderByEndedAtDesc(COMPLETED);
 
     if (lastBackup.isPresent()) {
       LocalDateTime lastBackupTime = lastBackup.get().getEndedAt();
       // 직원 데이터 변경 여부 확인 (예: 직원 테이블에서 lastBackupTime 이후 변경된 데이터가 있는지 확인)
-      // return employeeRepository.existsByLastModifiedTimeAfter(lastBackupTime); // 마지막 변경 변경이력 조회 - 성삼님께 요청
+      return employeeRepository.existsByUpdatedAtAfter(lastBackupTime); // 마지막 변경 변경이력 조회 - 성삼님께 요청
     }
     return true;
   }
 
   // 2. 데이터 백업 필요 시 데이터 백업 이력을 등록
-  public BackupHistory startBackup(String worker) { //worker ip주소 어떻게 얻을 건지 고민하기
-    BackupHistory history = new BackupHistory();
+  public Backup startBackup(String worker) { //worker ip주소 어떻게 얻을 건지 고민하기
+    Backup history = new Backup();
     history.setWorker(worker);
     history.setStartedAt(LocalDateTime.now());
-    history.setStatus(BackupHistoryStatus.IN_PROGRESS);
-    return backupHistoryRepository.save(history);
+    history.setStatus(BackupStatus.IN_PROGRESS);
+    return backupRepository.save(history);
   }
 
   // 3. 백업 생성
   public void performBackup(String worker) {
     // 백업 필요 여부 X
     if (!isBackupNeeded()) {
-      BackupHistory skippedHistory = new BackupHistory();
+      Backup skippedHistory = new Backup();
       skippedHistory.setWorker(worker);
       skippedHistory.setStartedAt(LocalDateTime.now());
-      skippedHistory.setStatus(BackupHistoryStatus.SKIP);
-      backupHistoryRepository.save(skippedHistory); // 필요없다면 스킵으로 저장 및 종료
+      skippedHistory.setStatus(BackupStatus.SKIP);
+      backupRepository.save(skippedHistory); // 필요없다면 스킵으로 저장 및 종료
       return;
     }
 
     // 백업 필요 여부 O, 새로운 백업 생성
-    BackupHistory history = startBackup(worker);
+    Backup history = startBackup(worker);
 
     try {
       // 백업 파일 생성
@@ -86,27 +91,27 @@ public class BackupHistoryServiceImpl {
 
 
       byte[] fileData = FileUtils.readFileToByteArray(backupFile);
-      Long fileId = FileService.storeFile(fileData, backupFile.getName()); //파일 저장 및 fileID 획득 소율님 코드 참고하기
+      Long fileId = binaryContentService.storeFile(fileData, backupFile.getName()); //파일 저장 및 fileID 획득 소율님 코드 참고하기
 
       // 백업 이력 업데이트
-      history.setStatus(BackupHistoryStatus.COMPLETED);
+      history.setStatus(COMPLETED);
       history.setEndedAt(LocalDateTime.now());
       history.setFileId(fileId);
     } catch (IOException e) {
       // 백업 실패 시 처리
-      history.setStatus(BackupHistoryStatus.FAILED);
+      history.setStatus(BackupStatus.FAILED);
       history.setEndedAt(LocalDateTime.now());
       File errorLog = new File(backupDirectory + "/error_" + LocalDateTime.now().toString() + ".log");
       try {
         FileUtils.writeStringToFile(errorLog, e.getMessage(), "UTF-8");
         byte[] errorLogData = FileUtils.readFileToByteArray(errorLog);
-        Long fileId = FileService.storeFile(errorLogData, errorLog.getName()); // 77line 동일
+        Long fileId = binaryContentService.storeFile(errorLogData, errorLog.getName()); // 77line 동일
         history.setFileId(fileId); // fileId 저장
       } catch (IOException ex) {
         ex.printStackTrace();
       }
     } finally {
-      backupHistoryRepository.save(history);
+      backupRepository.save(history);
     }
   }
 
@@ -134,7 +139,7 @@ public class BackupHistoryServiceImpl {
   }
 
   public CursorPageResponseBackupDto<BackupHistoryDto> getBackupHistory(
-      String worker, BackupHistoryStatus status, LocalDateTime startedAtFrom, LocalDateTime startedAtTo,
+      String worker, BackupStatus status, LocalDateTime startedAtFrom, LocalDateTime startedAtTo,
       Long idAfter, String cursor, int size, String sortField, String sortDirection) {
 
     // 정렬 설정
@@ -145,16 +150,16 @@ public class BackupHistoryServiceImpl {
     Pageable pageable = PageRequest.of(0, size, sort);
 
     // 커서 기반 페이지네이션 (idAfter 또는 cursor 사용)
-    Page<BackupHistory> backupHistoryPage;
+    Page<Backup> backupHistoryPage;
     if (idAfter != null) {
-      backupHistoryPage = backupHistoryRepository.findByIdAfterAndFilters(
+      backupHistoryPage = backupRepository.findByIdAfterAndFilters(
           idAfter, worker, status, startedAtFrom, startedAtTo, pageable);
     } else if (cursor != null) {
       Long cursorId = Long.parseLong(cursor);
-      backupHistoryPage = backupHistoryRepository.findByIdAfterAndFilters(
+      backupHistoryPage = backupRepository.findByIdAfterAndFilters(
           cursorId, worker, status, startedAtFrom, startedAtTo, pageable);
     } else {
-      backupHistoryPage = backupHistoryRepository.findByFilters(
+      backupHistoryPage = backupRepository.findByFilters(
           worker, status, startedAtFrom, startedAtTo, pageable);
     }
 
@@ -178,14 +183,14 @@ public class BackupHistoryServiceImpl {
     );
   }
 
-  public BackupHistoryDto getLatestBackup(BackupHistoryStatus status) {
+  public BackupHistoryDto getLatestBackup(BackupStatus status) {
     // 상태가 지정되지 않으면 COMPLETED 상태로 설정
     if (status == null) {
-      status = BackupHistoryStatus.COMPLETED;
+      status = COMPLETED;
     }
 
     // 지정된 상태의 가장 최근 백업 정보 조회
-    Optional<BackupHistory> latestBackup = backupHistoryRepository.findTopByStatusOrderByEndedAtDesc(status);
+    Optional<Backup> latestBackup = backupRepository.findTopByStatusOrderByEndedAtDesc(status);
 
     // 백업 정보가 있으면 DTO로 변환하여 반환
     return latestBackup.map(BackupHistoryDto::new).orElse(null);

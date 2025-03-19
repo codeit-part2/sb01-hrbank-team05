@@ -1,9 +1,27 @@
 spring:
+  servlet:
+    multipart:
+      maxFileSize: 10MB
+      maxRequestSize: 30MB
   datasource:
     url: jdbc:postgresql://localhost:5432/hrbank
     username: hrbank_5
     password: hrbank_5
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
+
+backup:
+  batch:
+    interval: 3600000
+  directory: ./hrbank05/file/backup
+
+file:
+  upload-dir: ./hrbank05/file/backup
+
+demo:
+  storage:
+    type: local
+    local:
+      root-path: C:/storage/binary
