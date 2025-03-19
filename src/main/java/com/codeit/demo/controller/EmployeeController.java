@@ -1,10 +1,12 @@
 package com.codeit.demo.controller;
 
 import com.codeit.demo.controller.api.EmployeeApi;
+import com.codeit.demo.dto.data.EmployeeDistributionDto;
 import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
 import com.codeit.demo.dto.request.EmployeeCreateRequest;
 import com.codeit.demo.dto.request.EmployeeUpdateRequest;
+import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.service.EmployeeService;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -83,6 +85,7 @@ public class EmployeeController implements EmployeeApi {
     Sort.Direction direction =
         "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
     PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+
     Page<EmployeeDto> employeePage = employeeService.findAllEmployees(
         nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, status,
         pageable);
@@ -127,5 +130,11 @@ public class EmployeeController implements EmployeeApi {
       @RequestParam(defaultValue = "month") String unit){
     List<EmployeeTrendDto> result=employeeService.findTrends(from, to, unit);
     return ResponseEntity.ok(result);
+  }
+
+  @GetMapping("/stats/distribution")
+  public ResponseEntity<List<EmployeeDistributionDto>> getEmployeeDistribution(
+      @RequestParam(defaultValue = "department") String groupBy) {
+    return ResponseEntity.ok(employeeService.getEmployeeDistribution(groupBy));
   }
 }

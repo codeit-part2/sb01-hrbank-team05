@@ -13,28 +13,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface EmployeeService {
-  /**
-   * 새로운 직원을 생성합니다.
-   *
-   * @param request 직원 생성 요청 데이터
-   * @param profileImage 직원 프로필 이미지 (선택적)
-   * @return 생성된 직원 정보
-   */
+
+  // 새로운 직원 생성
   EmployeeDto createEmployee(EmployeeCreateRequest request, MultipartFile profileImage)
       throws IOException;
 
-  /**
-   * 직원 ID로 직원 정보를 조회합니다.
-   *
-   * @param id 직원 ID
-   * @return 직원 정보 DTO
-   */
+  // ID로 직원 조회
   EmployeeDto getEmployeeById(Long id);
 
-  /**
-   * 모든 직원 목록을 페이지네이션하여 조회합니다.
-   *
-   */
+  // 페이지 네이션 사용 하여 모든 직원 조회
   Page<EmployeeDto> findAllEmployees(
       String nameOrEmail,
       String employeeNumber,
@@ -47,67 +34,30 @@ public interface EmployeeService {
 
 
 
-  /**
-   * 직원 정보를 수정합니다.
-   *
-   * @param id 직원 ID
-   * @param request 직원 정보 수정 요청
-   * @return 수정된 직원 정보
-   */
+  // 직원 정보 수정
   EmployeeDto updateEmployee(Long id, EmployeeUpdateRequest request);
 
-  /**
-   * 프로필 이미지를 업데이트합니다.
-   *
-   * @param id 직원 ID
-   * @param profileImage 새 프로필 이미지
-   * @return 업데이트된 직원 정보
-   */
+  // 프로필 이미지 수정
   EmployeeDto updateProfileImage(Long id, MultipartFile profileImage) throws IOException;
 
-  /**
-   * 직원 상태를 업데이트합니다.
-   *
-   * @param id 직원 ID
-   * @param status 새로운 고용 상태
-   * @return 업데이트된 직원 정보
-   */
+  // 직원 상태 수정
   EmployeeDto updateEmployeeStatus(Long id, String status);
 
-  /**
-   * 직원을 삭제합니다 (상태를 비활성으로 변경).
-   *
-   * @param id 직원 ID
-   */
+  // 직원 삭제
   void deleteEmployee(Long id);
 
-  /**
-   * 전체 직원 수를 조회합니다.
-   *
-   * @return 전체 직원 수
-   */
+
+  // 전체 직원 수 조회
   long countEmployees(String status, LocalDate startDate, LocalDate endDate);
 
 
-  /**
-   * 부서 ID로 직원 목록을 조회합니다.
-   *
-   */
+  // 부서 ID로 소속 부서 직원 조회
   Page<EmployeeDto> getEmployeesByDepartment(Long departmentId, Pageable pageable);
 
+  // 직원 추이 조회
   List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit);
 
-  /**
-   * 직원 분포 통계를 조회합니다.
-   *
-   * @return 직원 분포 통계 정보
-   */
-  /**
-   * 직원 분포 통계를 조회합니다.
-   *
-   * @param groupBy 그룹화 기준 (department, position, status)
-   * @return 직원 분포 통계 정보 목록
-   */
+  // 직원 분포 통계 조회
   List<EmployeeDistributionDto> getEmployeeDistribution(String groupBy);
 
 }
