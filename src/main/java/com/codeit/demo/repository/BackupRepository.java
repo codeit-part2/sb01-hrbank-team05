@@ -14,23 +14,25 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BackupRepository extends JpaRepository<Backup, Long> {
 
-    Optional<Backup> findTopByStatusOrderByEndedAtDesc(BackupStatus status);
+    @Query("SELECT b FROM Backup b WHERE b.status = :status ORDER BY b.endedAt DESC")
+    Optional<Backup> findLastBackup(@Param("status") BackupStatus status);
 
     @Query("SELECT b FROM Backup b WHERE " +
-        "(:worker IS NULL OR b.worker LIKE %:worker%) AND " +
-        "(:status IS NULL OR b.status = :status) AND " +
-        "(:startedAtFrom IS NULL OR b.startedAt >= :startedAtFrom) AND " +
-        "(:startedAtTo IS NULL OR b.startedAt <= :startedAtTo)")
+        "(COALESCE(:worker, '') = '' OR b.worker LIKE CONCAT('%', :worker, '%')) AND " +
+        "(COALESCE(:status, NULL) IS NULL OR b.status = :status) AND " +
+        "(COALESCE(:startedAtFrom, NULL) IS NULL OR b.startedAt >= :startedAtFrom) AND " +
+        "(COALESCE(:startedAtTo, NULL) IS NULL OR b.startedAt <= :startedAtTo)")
     Page<Backup> findByFilters(
         @Param("worker") String worker,
         @Param("status") BackupStatus status,
-        @Param("startedAtFrom") LocalDateTime startedAt,
-        @Param("startedAtTo") LocalDateTime endedAt,
+        @Param("startedAtFrom") LocalDateTime startedAtFrom,
+        @Param("startedAtTo") LocalDateTime startedAtTo,
         Pageable pageable);
+
 
     @Query("SELECT b FROM Backup b WHERE " +
         "b.id > :idAfter AND " +
-        "(:worker IS NULL OR b.worker LIKE %:worker%) AND " +
+        "(:worker IS NULL OR b.worker LIKE CONCAT('%', :worker, '%')) AND " +
         "(:status IS NULL OR b.status = :status) AND " +
         "(:startedAtFrom IS NULL OR b.startedAt >= :startedAtFrom) AND " +
         "(:startedAtTo IS NULL OR b.startedAt <= :startedAtTo)")
@@ -38,7 +40,7 @@ public interface BackupRepository extends JpaRepository<Backup, Long> {
         @Param("idAfter") Long idAfter,
         @Param("worker") String worker,
         @Param("status") BackupStatus status,
-        @Param("startedAtFrom") LocalDateTime startedAt,
-        @Param("startedAtTo") LocalDateTime endedAt,
+        @Param("startedAtFrom") LocalDateTime startedAtFrom,
+        @Param("startedAtTo") LocalDateTime startedAtTo,
         Pageable pageable);
   }

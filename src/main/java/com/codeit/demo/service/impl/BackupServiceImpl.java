@@ -1,6 +1,7 @@
 package com.codeit.demo.service.impl;
 
 import static com.codeit.demo.entity.enums.BackupStatus.COMPLETED;
+import static com.codeit.demo.entity.enums.BackupStatus.valueOf;
 
 import com.codeit.demo.dto.response.BackupHistoryDto;
 import com.codeit.demo.dto.response.CursorPageResponseBackupDto;
@@ -49,7 +50,7 @@ public class BackupServiceImpl {
   // 1. 데이터 백업 필요 여부를 판단
   public boolean isBackupNeeded() {
     // 가장 최근 완료된 백업 이력 조회
-    Optional<Backup> lastBackup = backupRepository.findTopByStatusOrderByEndedAtDesc(COMPLETED);
+    Optional<Backup> lastBackup = backupRepository.findLastBackup(COMPLETED);
 
     if (lastBackup.isPresent()) {
       LocalDateTime lastBackupTime = lastBackup.get().getEndedAt();
@@ -64,6 +65,7 @@ public class BackupServiceImpl {
     Backup history = new Backup();
     history.setWorker(worker);
     history.setStartedAt(LocalDateTime.now());
+    history.setEndedAt(LocalDateTime.now());
     history.setStatus(BackupStatus.IN_PROGRESS);
     return backupRepository.save(history);
   }
@@ -89,14 +91,16 @@ public class BackupServiceImpl {
       List<String> employeeData = fetchEmployeeDataInChunks(); // 청크 단위로 데이터 조회
       FileUtils.writeLines(backupFile, employeeData);
 
-
       byte[] fileData = FileUtils.readFileToByteArray(backupFile);
-      Long fileId = binaryContentService.storeFile(fileData, backupFile.getName()); //파일 저장 및 fileID 획득 소율님 코드 참고하기
+      Long fileId = binaryContentService.storeFile(fileData, backupFile.getName()); //파일 저장 및 fileID 획득
+
+      // BinaryContent 객체를 fileId를 통해 조회
+      BinaryContent binaryContent = binaryContentService.findById(fileId);
+      history.setFileId(binaryContent.getId()); // BinaryContent 객체를 Backup에 설정
 
       // 백업 이력 업데이트
-      history.setStatus(COMPLETED);
+      history.setStatus(BackupStatus.COMPLETED);
       history.setEndedAt(LocalDateTime.now());
-      history.setFileId(fileId);
     } catch (IOException e) {
       // 백업 실패 시 처리
       history.setStatus(BackupStatus.FAILED);
@@ -105,8 +109,9 @@ public class BackupServiceImpl {
       try {
         FileUtils.writeStringToFile(errorLog, e.getMessage(), "UTF-8");
         byte[] errorLogData = FileUtils.readFileToByteArray(errorLog);
-        Long fileId = binaryContentService.storeFile(errorLogData, errorLog.getName()); // 77line 동일
-        history.setFileId(fileId); // fileId 저장
+        Long fileId = binaryContentService.storeFile(errorLogData, errorLog.getName()); // 동일한 방식으로 에러 로그 파일 저장
+        BinaryContent binaryContent = binaryContentService.findById(fileId);
+        history.setFileId(binaryContent.getId()); // BinaryContent 객체를 Backup에 설정
       } catch (IOException ex) {
         ex.printStackTrace();
       }
@@ -114,6 +119,7 @@ public class BackupServiceImpl {
       backupRepository.save(history);
     }
   }
+
 
   private List<String> fetchEmployeeDataInChunks() {
     List<String> allData = new ArrayList<>();
@@ -190,7 +196,7 @@ public class BackupServiceImpl {
     }
 
     // 지정된 상태의 가장 최근 백업 정보 조회
-    Optional<Backup> latestBackup = backupRepository.findTopByStatusOrderByEndedAtDesc(status);
+    Optional<Backup> latestBackup = backupRepository.findLastBackup(status);
 
     // 백업 정보가 있으면 DTO로 변환하여 반환
     return latestBackup.map(BackupHistoryDto::new).orElse(null);

@@ -38,7 +38,7 @@ public class Backup {
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-  @Column(nullable = false)
+  @Column(name = "status", nullable = false)
   private BackupStatus status;
 
   @ManyToOne (fetch = FetchType.LAZY, optional = false)

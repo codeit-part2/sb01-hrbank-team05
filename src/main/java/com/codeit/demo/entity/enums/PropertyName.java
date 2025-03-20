@@ -1,10 +1,19 @@
 package com.codeit.demo.entity.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum PropertyName {
-  NAME,
-  EMAIL,
-  DEPARTMENT_NAME,
-  POSTITION,
-  START_DATE,
-  STATUS
+  NAME("name"),
+  EMAIL("email"),
+  DEPARTMENT_NAME("department"),
+  POSITION("position"),
+  HIRE_DATE("hireDate"),
+  STATUS("status");
+
+  private String propertyName;
+
+  PropertyName(String property) {
+    this.propertyName = property;
+  }
 }

@@ -11,8 +11,6 @@ public interface BinaryContentService {
 
   BinaryContent findById(Long id);
 
-  List<BinaryContent> findAllByIdIn(List<Long> ids);
-
   void delete(Long id);
 
 }

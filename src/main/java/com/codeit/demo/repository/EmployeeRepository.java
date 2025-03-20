@@ -19,25 +19,26 @@ import org.springframework.stereotype.Repository;
 public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSpecificationExecutor<Employee> {
 
   // 이메일로 직원 찾기
+  @EntityGraph(attributePaths = {"department", "profileImage"})
   Optional<Employee> findByEmail(String email);
 
   // 부서별 조회
+  @EntityGraph(attributePaths = "department")
   Page<Employee> findByDepartmentId(Long departmentId, Pageable pageable);
 
   Long countByDepartmentId(Long departmentId);
 
+  @EntityGraph(attributePaths = {"department", "profileImage"})
   Optional<Employee> findTopByEmployeeNumberLikeOrderByEmployeeNumberDesc(String pattern);
 
   @Query("SELECT e FROM Employee e " +
-      "WHERE (:nameOrEmail IS NULL OR " +
-      "      e.name LIKE CONCAT('%', CAST(:nameOrEmail AS string), '%') OR " +
-      "      e.email LIKE CONCAT('%', CAST(:nameOrEmail AS string), '%')) AND " +
-      "(:employeeNumber IS NULL OR e.employeeNumber LIKE CONCAT('%', CAST(:employeeNumber AS string), '%')) AND " +
-      "(:departmentName IS NULL OR e.department.name LIKE CONCAT('%', CAST(:departmentName AS string), '%')) AND " +
-      "(:position IS NULL OR e.position LIKE CONCAT('%', CAST(:position AS string), '%')) AND " +
+      "WHERE (:nameOrEmail IS NULL OR e.name LIKE %:nameOrEmail% OR e.email LIKE %:nameOrEmail%) AND " +
+      "(:employeeNumber IS NULL OR e.employeeNumber LIKE %:employeeNumber%) AND " +
+      "(:departmentName IS NULL OR e.department.name LIKE %:departmentName%) AND " +
+      "(:position IS NULL OR e.position LIKE %:position%) AND " +
       "(:hireDateFrom IS NULL OR e.hireDate >= :hireDateFrom) AND " +
       "(:hireDateTo IS NULL OR e.hireDate <= :hireDateTo) AND " +
-      "(:status IS NULL OR CAST(e.status AS string) = CAST(:status AS string))")
+      "(:status IS NULL OR CAST(e.status AS string) = :status)")
   @EntityGraph(attributePaths = {"department", "profileImage"})
   Page<Employee> findEmployeesWithAdvancedFilters(
       @Param("nameOrEmail") String nameOrEmail,
@@ -46,7 +47,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("position") String position,
       @Param("hireDateFrom") LocalDate hireDateFrom,
       @Param("hireDateTo") LocalDate hireDateTo,
-      @Param("status") EmploymentStatus status,
+      @Param("status") String status,
       Pageable pageable);
 
   @Query("SELECT COUNT(e) FROM Employee e " +
@@ -72,6 +73,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
   @Query("SELECT e.status, COUNT(e) FROM Employee e GROUP BY e.status ORDER BY COUNT(e) DESC")
   List<Object[]> countEmployeesByStatus();
 
+
   //lastBackupTime 이후에 변경된 직원 데이터가 있는지 확인
   boolean existsByUpdatedAtAfter(LocalDateTime lastBackupTime);
+
+  @Query("SELECT COUNT(e) FROM Employee e " +
+      "WHERE (:status IS NULL OR CAST(e.status AS string)  = :status) " +
+      "AND (:startDate IS NULL OR e.hireDate >= :startDate) " +
+      "AND (:endDate IS NULL OR e.hireDate <= :endDate)")
+  long countEmployeesByFilters(@Param("status") String status,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate);
 }

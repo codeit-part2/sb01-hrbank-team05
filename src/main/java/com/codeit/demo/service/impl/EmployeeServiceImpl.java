@@ -8,6 +8,7 @@ import com.codeit.demo.dto.request.EmployeeUpdateRequest;
 import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.entity.Department;
 import com.codeit.demo.entity.Employee;
+import com.codeit.demo.service.ChangeLogService;
 import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.exception.DepartmentNotFoundException;
 import com.codeit.demo.exception.DuplicateEmailException;
@@ -17,7 +18,6 @@ import com.codeit.demo.repository.DepartmentRepository;
 import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.service.BinaryContentService;
 import com.codeit.demo.service.EmployeeService;
-import com.codeit.demo.util.CursorPageUtil;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -44,6 +44,7 @@ public class EmployeeServiceImpl implements EmployeeService {
   private final DepartmentRepository departmentRepository;
   private final EmployeeMapper employeeMapper;
   private final BinaryContentService binaryContentService;
+  private final ChangeLogService changeLogService;
 
 
   @Override
@@ -83,10 +84,12 @@ public class EmployeeServiceImpl implements EmployeeService {
       departmentRepository.incrementEmployeeCount(employee.getDepartment().getId());
     }
 
-
-
     // 저장 및 DTO 변환
     Employee savedEmployee = employeeRepository.save(employee);
+
+    // 직원 생성 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForCreation(savedEmployee, request);
+
     return employeeMapper.employeeToEmployeeDto(savedEmployee);
   }
 
@@ -110,38 +113,10 @@ public class EmployeeServiceImpl implements EmployeeService {
       String status,
       Pageable pageable) {
 
-    EmploymentStatus statusEnum = status != null ? convertStatusString(status) : null;
-
     Page<Employee> employeePage = employeeRepository.findEmployeesWithAdvancedFilters(
-        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, statusEnum, pageable);
+        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, status, pageable);
 
     return employeePage.map(employeeMapper::employeeToEmployeeDto);
-  }
-
-  private EmploymentStatus convertStatusString(String statusStr) {
-    if (statusStr == null) {
-      return null;
-    }
-    try {
-      return EmploymentStatus.valueOf(statusStr.toUpperCase());
-    } catch (IllegalArgumentException e) {
-      log.warn("Invalid status value: {}", statusStr);
-      return null;
-    }
-  }
-
-
-  // 커서 생성 헬퍼 메소드
-  private String buildCursor(Employee employee, String sortField) {
-    switch (sortField.toLowerCase()) {
-      case "employeenumber":
-        return employee.getEmployeeNumber();
-      case "hiredate":
-        return employee.getHireDate().toString();
-      case "name":
-      default:
-        return employee.getId().toString(); // 기본은 ID 기반 커서
-    }
   }
 
   @Override
@@ -180,6 +155,8 @@ public class EmployeeServiceImpl implements EmployeeService {
       employee.setDepartment(null);
       departmentRepository.decrementEmployeeCount(oldDepartmentId);
     }
+    // 직원 정보 수정 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForUpdate(employee, request);
 
     employeeMapper.updateEmployeeFromRequest(request, employee);
 
@@ -241,6 +218,9 @@ public class EmployeeServiceImpl implements EmployeeService {
       departmentRepository.decrementEmployeeCount(employee.getDepartment().getId());
     }
 
+    // 직원 삭제 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForDeletion(employee);
+
     // 기존 삭제 로직
     employeeRepository.delete(employee);
   }
@@ -261,33 +241,12 @@ public class EmployeeServiceImpl implements EmployeeService {
     return employeePage.map(employeeMapper::employeeToEmployeeDto);
   }
 
-
   @Override
   @Transactional(readOnly = true)
   public long countEmployees(String status, LocalDate startDate, LocalDate endDate) {
-    // 동적 쿼리 조건을 구성하기 위한 Specification 생성
-    Specification<Employee> spec = Specification.where(null);
-
-    // 상태 필터 적용
-    if (status != null && !status.isEmpty()) {
-      spec = spec.and((root, query, builder) ->
-          builder.equal(root.get("status"), status));
-    }
-
-    // 입사일 시작일 필터 적용
-    if (startDate != null) {
-      spec = spec.and((root, query, builder) ->
-          builder.greaterThanOrEqualTo(root.get("hireDate"), startDate));
-    }
-
-    // 입사일 종료일 필터 적용
-    if (endDate != null) {
-      spec = spec.and((root, query, builder) ->
-          builder.lessThanOrEqualTo(root.get("hireDate"), endDate));
-    }
-
-    return employeeRepository.count(spec);
+    return employeeRepository.countEmployeesByFilters(status, startDate, endDate);
   }
+
 
   @Override
   public List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit) {
