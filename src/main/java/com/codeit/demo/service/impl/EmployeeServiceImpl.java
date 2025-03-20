@@ -1,14 +1,15 @@
 package com.codeit.demo.service.impl;
 
+import com.codeit.demo.dto.data.CursorPageResponseEmployeeDto;
 import com.codeit.demo.dto.data.EmployeeDistributionDto;
 import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
 import com.codeit.demo.dto.request.EmployeeCreateRequest;
 import com.codeit.demo.dto.request.EmployeeUpdateRequest;
-import com.codeit.demo.dto.response.CursorPageResponse;
 import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.entity.Department;
 import com.codeit.demo.entity.Employee;
+import com.codeit.demo.service.ChangeLogService;
 import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.exception.DepartmentNotFoundException;
 import com.codeit.demo.exception.DuplicateEmailException;
@@ -18,10 +19,10 @@ import com.codeit.demo.repository.DepartmentRepository;
 import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.service.BinaryContentService;
 import com.codeit.demo.service.EmployeeService;
-import com.codeit.demo.util.CursorPageUtil;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -46,6 +48,7 @@ public class EmployeeServiceImpl implements EmployeeService {
   private final DepartmentRepository departmentRepository;
   private final EmployeeMapper employeeMapper;
   private final BinaryContentService binaryContentService;
+  private final ChangeLogService changeLogService;
 
 
   @Override
@@ -64,7 +67,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     // 사원번호 자동 생성
     employee.setEmployeeNumber(generateEmployeeNumber());
 
-    // 이메일 중복 검사
+    // 이메일 중복 검사 @Transactional(readOnly = true)
     if (employeeRepository.findByEmail(request.email()).isPresent()) {
       throw new DuplicateEmailException("이메일이 이미 사용 중입니다: " + request.email());
     }
@@ -77,7 +80,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     // 프로필 이미지가 제공된 경우에만 처리
     if (file != null && !file.isEmpty()) {
 
-      BinaryContent savedFile = binaryContentService.create(file);
+      BinaryContent savedFile = binaryContentService.createBinaryContent(file);
       employee.setProfileImage(savedFile);
     }
     // 생성된 직원의 부서가 있으면 직원 수 증가
@@ -85,24 +88,26 @@ public class EmployeeServiceImpl implements EmployeeService {
       departmentRepository.incrementEmployeeCount(employee.getDepartment().getId());
     }
 
-
-
     // 저장 및 DTO 변환
     Employee savedEmployee = employeeRepository.save(employee);
+
+    // 직원 생성 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForCreation(savedEmployee, request);
+
     return employeeMapper.employeeToEmployeeDto(savedEmployee);
   }
 
   @Override
   @Transactional(readOnly = true)
   public EmployeeDto getEmployeeById(Long id) {
-    log.info("Getting employee with ID: {}", id);
     return employeeRepository.findById(id)
         .map(employeeMapper::employeeToEmployeeDto)
         .orElseThrow(() -> new EmployeeNotFoundException("직원을 찾을 수 없습니다: " + id));
   }
 
   @Override
-  public CursorPageResponse<EmployeeDto> getAllEmployees(
+  @Transactional(readOnly = true)
+  public CursorPageResponseEmployeeDto findAllEmployees(
       String nameOrEmail,
       String employeeNumber,
       String departmentName,
@@ -111,93 +116,41 @@ public class EmployeeServiceImpl implements EmployeeService {
       LocalDate hireDateTo,
       String status,
       Long idAfter,
-      String cursor,
       int size,
       String sortField,
       String sortDirection) {
 
-    // 정렬 방향 설정
-    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+    Sort.Direction direction =
+        "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
 
-    // 정렬 필드 설정
-    String sortProperty;
-    switch (sortField.toLowerCase()) {
-      case "employeenumber":
-        sortProperty = "employeeNumber";
-        break;
-      case "hiredate":
-        sortProperty = "hireDate";
-        break;
-      case "position":
-        sortProperty = "position"; // position 정렬 옵션 추가
-        break;
-      case "name":
-      default:
-        sortProperty = "name";
-        break;
-    }
+    Pageable pageable = PageRequest.of(0, size + 1, Sort.by(direction, sortField));
 
-    // 페이지 및 정렬 정보 설정
-    Sort sort = Sort.by(direction, sortProperty);
-    Pageable pageable = PageRequest.of(0, size + 1, sort);
-
-    // 상태 열거형 변환
-    EmploymentStatus statusEnum = status != null ? convertStatusString(status) : null;
-
-    // 필터링된 직원 목록 가져오기
     List<Employee> employees = employeeRepository.findEmployeesWithAdvancedFilters(
-        nameOrEmail,
-        employeeNumber,
-        departmentName,
-        position,
-        hireDateFrom,
-        hireDateTo,
-        statusEnum,
-        idAfter,
-        pageable);
+        idAfter, nameOrEmail, employeeNumber, departmentName, position,
+        hireDateFrom, hireDateTo, status, pageable);
 
-    // 결과 처리 및 반환
-    boolean hasNext = false;
-    if (employees.size() > size) {
-      hasNext = true;
+    boolean hasNext = employees.size() > size;
+
+    if (hasNext) {
       employees = employees.subList(0, size);
     }
+
+    Long nextIdAfter = hasNext
+        ? employees.get(employees.size() - 1).getId()
+        : null;
 
     List<EmployeeDto> employeeDtos = employees.stream()
         .map(employeeMapper::employeeToEmployeeDto)
         .collect(Collectors.toList());
 
-    // 다음 커서 생성 (ID 기반)
-    Long nextCursor = hasNext && !employees.isEmpty() ?
-        employees.get(employees.size() - 1).getId() : null;
-
-    return new CursorPageResponse<>(employeeDtos, nextCursor, hasNext);
-  }
-
-  private EmploymentStatus convertStatusString(String statusStr) {
-    if (statusStr == null) {
-      return null;
-    }
-
-    try {
-      return EmploymentStatus.valueOf(statusStr.toUpperCase());
-    } catch (IllegalArgumentException e) {
-      log.warn("Invalid status value: {}", statusStr);
-      return null;
-    }
-  }
-
-  // 커서 생성 헬퍼 메소드
-  private String buildCursor(Employee employee, String sortField) {
-    switch (sortField.toLowerCase()) {
-      case "employeenumber":
-        return employee.getEmployeeNumber();
-      case "hiredate":
-        return employee.getHireDate().toString();
-      case "name":
-      default:
-        return employee.getId().toString(); // 기본은 ID 기반 커서
-    }
+    return new CursorPageResponseEmployeeDto(
+        employeeDtos,
+        nextIdAfter != null ? nextIdAfter.toString() : null,
+        nextIdAfter,
+        size,
+        employeeRepository.count(), // totalElements
+        hasNext
+    );
   }
 
   @Override
@@ -236,6 +189,8 @@ public class EmployeeServiceImpl implements EmployeeService {
       employee.setDepartment(null);
       departmentRepository.decrementEmployeeCount(oldDepartmentId);
     }
+    // 직원 정보 수정 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForUpdate(employee, request);
 
     employeeMapper.updateEmployeeFromRequest(request, employee);
 
@@ -261,7 +216,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     // 새 이미지 저장
-    BinaryContent savedFile = binaryContentService.create(file);
+    BinaryContent savedFile = binaryContentService.createBinaryContent(file);
     employee.setProfileImage(savedFile);
 
     Employee updatedEmployee = employeeRepository.save(employee);
@@ -297,6 +252,9 @@ public class EmployeeServiceImpl implements EmployeeService {
       departmentRepository.decrementEmployeeCount(employee.getDepartment().getId());
     }
 
+    // 직원 삭제 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForDeletion(employee);
+
     // 기존 삭제 로직
     employeeRepository.delete(employee);
   }
@@ -306,93 +264,102 @@ public class EmployeeServiceImpl implements EmployeeService {
 
   @Override
   @Transactional(readOnly = true)
-  public CursorPageResponse<EmployeeDto> getEmployeesByDepartment(Long departmentId, Long cursor, int size) {
-    log.info("Getting employees by department ID: {} with cursor: {}, size: {}", departmentId, cursor, size);
+  public CursorPageResponseEmployeeDto getEmployeesByDepartment (Long departmentId, Long idAfter, int size) {
 
-    // 부서 존재 여부 확인
-    if (!departmentRepository.existsById(departmentId)) {
-      throw new DepartmentNotFoundException("부서를 찾을 수 없습니다: " + departmentId);
+    Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.ASC, "id"));
+
+    List<Employee> employees = employeeRepository.findEmployeesByDepartment(departmentId, idAfter, pageable);
+
+    boolean hasNext = employees.size() > size;
+
+    if (hasNext) {
+      employees = employees.subList(0, size);
     }
 
-    List<Employee> employees;
-    if (cursor == null) {
-      employees = employeeRepository.findByDepartmentIdOrderByIdDesc(departmentId, PageRequest.of(0, size));
-    } else {
-      employees = employeeRepository.findByDepartmentIdAndIdLessThanOrderByIdDesc(departmentId, cursor, PageRequest.of(0, size));
-    }
+    Long nextIdAfter = hasNext
+        ? employees.get(employees.size() - 1).getId()
+        : null;
 
     List<EmployeeDto> employeeDtos = employees.stream()
         .map(employeeMapper::employeeToEmployeeDto)
         .collect(Collectors.toList());
 
-    Long nextCursor = null;
-    if (!employees.isEmpty()) {
-      nextCursor = CursorPageUtil.getNextCursor(employees, Employee::getId, size);
-    }
+    long totalElements = employeeRepository.countByDepartmentId(departmentId);
 
-    return new CursorPageResponse<>(employeeDtos, nextCursor);
+    return new CursorPageResponseEmployeeDto(
+        employeeDtos,
+        nextIdAfter != null ? nextIdAfter.toString() : null,
+        nextIdAfter,
+        size,
+        totalElements,
+        hasNext
+    );
   }
 
   @Override
   @Transactional(readOnly = true)
   public long countEmployees(String status, LocalDate startDate, LocalDate endDate) {
-    // 동적 쿼리 조건을 구성하기 위한 Specification 생성
-    Specification<Employee> spec = Specification.where(null);
-
-    // 상태 필터 적용
-    if (status != null && !status.isEmpty()) {
-      spec = spec.and((root, query, builder) ->
-          builder.equal(root.get("status"), status));
-    }
-
-    // 입사일 시작일 필터 적용
-    if (startDate != null) {
-      spec = spec.and((root, query, builder) ->
-          builder.greaterThanOrEqualTo(root.get("hireDate"), startDate));
-    }
-
-    // 입사일 종료일 필터 적용
-    if (endDate != null) {
-      spec = spec.and((root, query, builder) ->
-          builder.lessThanOrEqualTo(root.get("hireDate"), endDate));
-    }
-
-    return employeeRepository.count(spec);
+    return employeeRepository.countEmployeesByFilters(status, startDate, endDate);
   }
 
+
   @Override
-  public List<EmployeeTrendDto> getEmployeeTrends(LocalDate startDate, LocalDate endDate, String status) {
-    // 기본값 설정
-    if (startDate == null) {
-      startDate = LocalDate.now().minusMonths(6);
+  public List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit) {
+    if(to==null) {
+      to=LocalDate.now();
     }
-    if (endDate == null) {
-      endDate = LocalDate.now();
+    if(from==null) {
+      from=calculateStart(to,unit);
+    }
+    List<LocalDate> dateRange = generateDateRange(from, to, unit);
+
+    List<EmployeeTrendDto> trends = new ArrayList<>();
+    Integer previousCount = null;
+
+    for (LocalDate date : dateRange) {
+      int currentCount = employeeRepository.findTotalCountNoResigned(date);
+      int change = (previousCount == null) ? 0 : currentCount - previousCount;
+      double changeRate = (previousCount == null || previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
+      trends.add(new EmployeeTrendDto(date, currentCount, change, changeRate));
+      previousCount = currentCount;
     }
 
-    List<Object[]> trendData;
-    // 상태별 조회 또는 전체 조회
-    if (status != null && !status.isEmpty()) {
-      try {
-        EmploymentStatus employmentStatus = EmploymentStatus.valueOf(status.toUpperCase());
-        trendData = employeeRepository.findEmployeeTrendsDataByStatus(employmentStatus, startDate, endDate);
-      } catch (IllegalArgumentException e) {
-        log.warn("잘못된 고용 상태: {}", status);
-        return new ArrayList<>();
+    return trends;
+
+  }
+
+
+
+  private LocalDate calculateStart(LocalDate to, String unit) {
+    return switch (unit.toLowerCase()) {
+      case "day" -> to.minusDays(12);
+      case "week" -> to.minusWeeks(12);
+      case "month" -> to.minusMonths(12);
+      case "year" -> to.minusYears(12).with(TemporalAdjusters.firstDayOfYear());
+      case "quarter" -> {
+        int quarterStart = ((to.getMonthValue() - 1) / 3) * 3 + 1;
+        yield to.withMonth(quarterStart).with(TemporalAdjusters.firstDayOfMonth());
       }
-    } else {
-      trendData = employeeRepository.findEmployeeTrendsData(startDate, endDate);
-    }
+      default -> to.minusMonths(12).with(TemporalAdjusters.firstDayOfMonth());
+    };
+  }
 
-    // Object[] 결과를 EmployeeTrendDto로 변환
-    return trendData.stream()
-        .map(data -> {
-          LocalDate date = (LocalDate) data[0];
-          Long count = (Long) data[1];
-          EmploymentStatus empStatus = (EmploymentStatus) data[2];
-          return new EmployeeTrendDto(date, count, empStatus.name());
-        })
-        .collect(Collectors.toList());
+  private List<LocalDate> generateDateRange(LocalDate from, LocalDate to, String unit) {
+    List<LocalDate> dates = new ArrayList<>();
+    LocalDate current = from;
+
+    while (!current.isAfter(to)) {
+      dates.add(current);
+      current = switch (unit.toLowerCase()) {
+        case "day" -> current.plusDays(1);
+        case "week" -> current.plusWeeks(1);
+        case "month" -> current.plusMonths(1);
+        case "year" -> current.plusYears(1);
+        case "quarter" -> current.plusMonths(3);
+        default -> current.plusMonths(1);
+      };
+    }
+    return dates;
   }
 
   @Override

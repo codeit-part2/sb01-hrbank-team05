@@ -26,7 +26,7 @@ public interface EmployeeMapper {
   // EmployeeCreateRequest를 Employee로 변환 (신규 직원 생성 시)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "department", source = "departmentId", qualifiedByName = "departmentIdToDepartment")
-  @Mapping(target = "hireDate", expression = "java(LocalDate.parse(request.hireDate()))")
+  @Mapping(target = "hireDate", source = "hireDate")
   @Mapping(target = "status", expression = "java(EmploymentStatus.ACTIVE)")
   @Mapping(target = "profileImage", ignore = true)
   Employee employeeCreateRequestToEmployee(EmployeeCreateRequest request);
@@ -34,8 +34,8 @@ public interface EmployeeMapper {
   // EmployeeUpdateRequest를 Employee로 변환 (직원 정보 업데이트 시)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "department", source = "departmentId", qualifiedByName = "departmentIdToDepartment")
-  @Mapping(target = "hireDate", expression = "java(request.hireDate() != null ? LocalDate.parse(request.hireDate()) : employee.getHireDate())")
-  @Mapping(target = "status", expression = "java(request.status() != null ? EmploymentStatus.valueOf(request.status()) : employee.getStatus())")
+  @Mapping(target = "hireDate", source = "hireDate")
+  @Mapping(target = "status", source = "status")
   @Mapping(target = "profileImage", ignore = true)
   void updateEmployeeFromRequest(EmployeeUpdateRequest request, @MappingTarget Employee employee);
 

@@ -24,7 +24,7 @@ public class BinaryContentServiceImpl implements BinaryContentService {
   private final BinaryContentStorage binaryContentStorage;
 
   @Transactional
-  public BinaryContent create(MultipartFile file) throws IOException {
+  public BinaryContent createBinaryContent(MultipartFile file) throws IOException {
 
     BinaryContent binaryContent = new BinaryContent(
         file.getOriginalFilename(),

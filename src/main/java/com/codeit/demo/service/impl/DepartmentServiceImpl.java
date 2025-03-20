@@ -1,24 +1,21 @@
 package com.codeit.demo.service.impl;
 
+import com.codeit.demo.dto.data.CursorPageResponseDepartmentDto;
 import com.codeit.demo.dto.data.DepartmentDto;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
-import com.codeit.demo.dto.response.CursorPageResponse;
 import com.codeit.demo.entity.Department;
 import com.codeit.demo.exception.DepartmentNotFoundException;
 import com.codeit.demo.mapper.DepartmentMapper;
 import com.codeit.demo.repository.DepartmentRepository;
 import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.service.DepartmentService;
-import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -31,59 +28,34 @@ public class DepartmentServiceImpl implements DepartmentService {
 
   @Override
   @Transactional(readOnly = true)
-  public CursorPageResponse<DepartmentDto> getAllDepartments(Long cursor, int size, String nameOrDescription,
-      String sortField, String sortDirection) {
-    if (size <= 0) {
-      size = 10; // 기본 페이지 크기
-    }
+  public CursorPageResponseDepartmentDto getAllDepartments(
+      String nameOrDescription, Long idAfter, int size, String sortField, String sortDirection) {
 
-    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-    String field = "establishedDate";
-    if ("name".equals(sortField)) {
-      field = "name";
-    }
+    Long cursorId = idAfter != null ? idAfter : 0L;
+    String sortFieldValue = sortField != null ? sortField : "id";
+    String sortDirectionValue = sortDirection != null ? sortDirection : "asc";
 
-    Sort sort = Sort.by(direction, field);
-    Pageable pageable = PageRequest.of(0, size + 1, sort);
+    log.info("Service processing with sortField={}, sortDirection={}", sortFieldValue, sortDirectionValue);
 
-    List<Department> departments;
-    if (cursor == null) {
-      if (nameOrDescription != null && !nameOrDescription.isEmpty()) {
-        departments = departmentRepository.findByNameContainingOrDescriptionContaining(
-            nameOrDescription, nameOrDescription, pageable).getContent();
-      } else {
-        departments = departmentRepository.findAll(pageable).getContent();
-      }
-    } else {
-      Department reference = departmentRepository.findById(cursor)
-          .orElseThrow(() -> new DepartmentNotFoundException("부서를 찾을 수 없습니다."));
-
-      if (nameOrDescription != null && !nameOrDescription.isEmpty()) {
-        if (direction == Sort.Direction.ASC) {
-          departments = departmentRepository.findByNameContainingOrDescriptionContainingAndIdGreaterThan(
-              nameOrDescription, nameOrDescription, cursor, pageable).getContent();
-        } else {
-          departments = departmentRepository.findByNameContainingOrDescriptionContainingAndIdLessThan(
-              nameOrDescription, nameOrDescription, cursor, pageable).getContent();
-        }
-      } else {
-        if (direction == Sort.Direction.ASC) {
-          departments = departmentRepository.findByIdGreaterThan(cursor, pageable).getContent();
-        } else {
-          departments = departmentRepository.findByIdLessThan(cursor, pageable).getContent();
-        }
-      }
-    }
+    List<Department> departments = departmentRepository.findDepartments(
+        cursorId, nameOrDescription, sortFieldValue, sortDirectionValue, size + 1);
 
     boolean hasNext = departments.size() > size;
-    List<Department> content = hasNext ? departments.subList(0, size) : departments;
-    Long nextCursor = hasNext && !content.isEmpty() ? content.get(content.size() - 1).getId() : null;
+    if (hasNext) {
+      departments = departments.subList(0, size);
+    }
 
-    List<DepartmentDto> departmentDtos = content.stream()
+    Long nextIdAfter = hasNext ? departments.get(departments.size() - 1).getId() : null;
+    String nextCursor = nextIdAfter != null ? nextIdAfter.toString() : null;
+
+    List<DepartmentDto> departmentDtos = departments.stream()
         .map(departmentMapper::toDto)
-        .collect(Collectors.toList());
+        .toList();
 
-    return new CursorPageResponse<>(departmentDtos, nextCursor, hasNext);
+    long totalElements = departmentRepository.count();
+
+    return new CursorPageResponseDepartmentDto(
+        departmentDtos, nextCursor, nextIdAfter, size, totalElements, hasNext);
   }
 
   @Override
@@ -98,7 +70,7 @@ public class DepartmentServiceImpl implements DepartmentService {
   @Transactional
   public DepartmentDto createDepartment(DepartmentCreateRequest request) {
     Department department = departmentMapper.toEntity(request);
-    department.setEmployeeCount(0); // 신규 부서는 직원 수 0으로 초기화
+    department.setEmployeeCount(0);
     Department savedDepartment = departmentRepository.save(department);
     return departmentMapper.toDto(savedDepartment);
   }
@@ -108,7 +80,6 @@ public class DepartmentServiceImpl implements DepartmentService {
   public DepartmentDto updateDepartment(Long id, DepartmentUpdateRequest request) {
     Department department = departmentRepository.findById(id)
         .orElseThrow(() -> new DepartmentNotFoundException("ID가 " + id + "인 부서를 찾을 수 없습니다."));
-
     departmentMapper.updateEntityFromRequest(request, department);
     Department updatedDepartment = departmentRepository.save(department);
     return departmentMapper.toDto(updatedDepartment);
@@ -120,13 +91,10 @@ public class DepartmentServiceImpl implements DepartmentService {
     if (!departmentRepository.existsById(id)) {
       throw new DepartmentNotFoundException("ID가 " + id + "인 부서를 찾을 수 없습니다.");
     }
-
-    // 해당 부서의 직원들이 있는지 확인
     long employeeCount = employeeRepository.countByDepartmentId(id);
     if (employeeCount > 0) {
       throw new IllegalStateException("해당 부서에 소속된 직원이 있어 삭제할 수 없습니다.");
     }
-
     departmentRepository.deleteById(id);
   }
 
@@ -135,10 +103,8 @@ public class DepartmentServiceImpl implements DepartmentService {
   public DepartmentDto updateEmployeeCount(Long departmentId) {
     Department department = departmentRepository.findById(departmentId)
         .orElseThrow(() -> new DepartmentNotFoundException("ID가 " + departmentId + "인 부서를 찾을 수 없습니다."));
-
     int count = Math.toIntExact(employeeRepository.countByDepartmentId(departmentId));
     department.setEmployeeCount(count);
-
     Department updatedDepartment = departmentRepository.save(department);
     return departmentMapper.toDto(updatedDepartment);
   }

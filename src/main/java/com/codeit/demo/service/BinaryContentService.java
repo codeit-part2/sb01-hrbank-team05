@@ -7,11 +7,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface BinaryContentService {
 
-  BinaryContent create(MultipartFile file) throws IOException;
+  BinaryContent createBinaryContent(MultipartFile file) throws IOException;
 
   BinaryContent findById(Long id);
-
-  List<BinaryContent> findAllByIdIn(List<Long> ids);
 
   void delete(Long id);
 
