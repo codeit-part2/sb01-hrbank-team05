@@ -1,5 +1,6 @@
 package com.codeit.demo.service.impl;
 
+import com.codeit.demo.dto.data.CursorPageResponseDepartmentDto;
 import com.codeit.demo.dto.data.DepartmentDto;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
@@ -32,17 +33,46 @@ public class DepartmentServiceImpl implements DepartmentService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<DepartmentDto> getAllDepartments(String nameOrDescription, Pageable pageable) {
-    Page<Department> departmentPage;
-    if (nameOrDescription != null && !nameOrDescription.isEmpty()) {
-      departmentPage = departmentRepository.findByNameContainingOrDescriptionContaining(
-          nameOrDescription, nameOrDescription, pageable);
-    } else {
-      departmentPage = departmentRepository.findAll(pageable);
+  public CursorPageResponseDepartmentDto getAllDepartments(
+      String nameOrDescription,
+      Long idAfter,
+      Object cursor,
+      int size) {
+
+    Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.ASC, "id"));
+
+    Long cursorId = cursor != null ? Long.parseLong(cursor.toString()) : null;
+
+    List<Department> departments = departmentRepository.findDepartments(
+        idAfter, cursorId, nameOrDescription, pageable);
+
+    boolean hasNext = departments.size() > size;
+
+    if (hasNext) {
+      departments = departments.subList(0, size);
     }
 
-    return departmentPage.map(departmentMapper::toDto);
+    Long nextCursor = hasNext
+        ? departments.get(departments.size() - 1).getId()
+        : null;
+
+    List<DepartmentDto> departmentDtos = departments.stream()
+        .map(departmentMapper::toDto)
+        .collect(Collectors.toList());
+
+    long totalElements = departmentRepository.count(); // 전체 부서 개수
+
+    return new CursorPageResponseDepartmentDto(
+        departmentDtos,
+        nextCursor != null ? nextCursor.toString() : null,
+        nextCursor, // idAfter 대신 nextCursor 사용
+        size,
+        totalElements,
+        hasNext
+    );
   }
+
+
 
   @Override
   @Transactional(readOnly = true)

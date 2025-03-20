@@ -1,6 +1,7 @@
 package com.codeit.demo.controller;
 
 import com.codeit.demo.controller.api.DepartmentApi;
+import com.codeit.demo.dto.data.CursorPageResponseDepartmentDto;
 import com.codeit.demo.dto.data.DepartmentDto;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
@@ -23,18 +24,18 @@ public class DepartmentController implements DepartmentApi {
 
   @Override
   @GetMapping
-  public ResponseEntity<Page<DepartmentDto>> getAllDepartments(
+  public ResponseEntity<CursorPageResponseDepartmentDto> getAllDepartments(
       @RequestParam(required = false) String nameOrDescription,
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "10") int size,
-      @RequestParam(defaultValue = "establishedDate") String sortField,
-      @RequestParam(defaultValue = "asc") String sortDirection) {
+      @RequestParam(required = false) Long idAfter,
+      @RequestParam(required = false) Object cursor,
+      @RequestParam(defaultValue = "10") int size) {
 
-    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-    PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
-    Page<DepartmentDto> departmentPage = departmentService.getAllDepartments(nameOrDescription, pageable);
-    return ResponseEntity.ok(departmentPage);
+    CursorPageResponseDepartmentDto response =
+        departmentService.getAllDepartments(nameOrDescription, idAfter, cursor, size);
+
+    return ResponseEntity.ok(response);
   }
+
 
   @Override
   @GetMapping("/{id}")

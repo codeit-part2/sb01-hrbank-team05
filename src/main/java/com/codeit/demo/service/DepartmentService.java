@@ -1,5 +1,6 @@
 package com.codeit.demo.service;
 
+import com.codeit.demo.dto.data.CursorPageResponseDepartmentDto;
 import com.codeit.demo.dto.data.DepartmentDto;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
@@ -9,7 +10,8 @@ import org.springframework.data.domain.Pageable;
 public interface DepartmentService {
 
   // 모든 부서 조회
-  Page<DepartmentDto> getAllDepartments(String nameOrDescription, Pageable pageable);
+  CursorPageResponseDepartmentDto getAllDepartments(String nameOrDescription, Long idAfter, Object cursor, int size);
+
 
   // 아이디로 부서 조회
   DepartmentDto getDepartmentById(Long id);
