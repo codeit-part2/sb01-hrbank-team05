@@ -20,7 +20,6 @@ import static com.codeit.demo.entity.QEmployee.employee;
 public class TrendRepository {
     private final JPAQueryFactory query;
 
-    // 특정 날짜까지 재직 중인 직원 수 조회
     public int findEmployeeCountByDate(LocalDate date) {
         Long result = query
                 .select(employee.count())
@@ -30,8 +29,7 @@ public class TrendRepository {
         return result != null ? result.intValue() : 0;
     }
 
-    // 특정 기간 동안 입사한 직원 수 조회
-    public int findNewHiresBetween(LocalDate start, LocalDate end) {
+    public int findNewHires(LocalDate start, LocalDate end) {
         Long result = query
                 .select(employee.count())
                 .from(employee)
@@ -41,7 +39,7 @@ public class TrendRepository {
 
     }
 
-    public int findResignedBetween(LocalDate start, LocalDate end) {
+    public int findResigned(LocalDate start, LocalDate end) {
         Instant startInstant = start.atStartOfDay(ZoneId.systemDefault()).toInstant();
         Instant endInstant = end.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
 

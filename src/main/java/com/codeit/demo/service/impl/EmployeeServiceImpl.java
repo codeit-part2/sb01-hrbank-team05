@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -332,18 +331,19 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     List<EmployeeTrendDto> trends = new ArrayList<>();
     int previousCount = trendRepository.findEmployeeCountByDate(from);
-    LocalDate previousDate = null;
 
+    LocalDate previousDate = null;
     List<LocalDate> dateRange = generateTrendDateRange(from, to, unit);
     for (LocalDate date : dateRange) {
-      int hires = (previousDate == null) ? 0 : trendRepository.findNewHiresBetween(previousDate.plusDays(1), date);
-      int resigns = (previousDate == null) ? 0 : trendRepository.findResignedBetween(previousDate.plusDays(1), date);
-      previousCount = (previousCount == 0) ? trendRepository.findEmployeeCountByDate(date) : previousCount + hires - resigns;
+      int hires = (previousDate == null) ? 0 : trendRepository.findNewHires(previousDate.plusDays(1),date);
+      int resigns = (previousDate == null) ? 0 : trendRepository.findResigned(previousDate.plusDays(1), date);
+      int currentCount = previousCount + hires - resigns;
 
-      int change = hires - resigns;
+      int change = hires - resigns; //previouscount-currentcount
       double changeRate = (previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
       changeRate = Math.round(changeRate * 10.0) / 10.0;
-      trends.add(new EmployeeTrendDto(date, previousCount, change, changeRate));
+      trends.add(new EmployeeTrendDto(date, currentCount, change, changeRate));
+      previousCount=currentCount;
       previousDate = date;
     }
     return trends;
@@ -370,18 +370,17 @@ public class EmployeeServiceImpl implements EmployeeService {
   }
 
   private List<LocalDate> generateTrendDateRange(LocalDate from, LocalDate to, String unit) {
-    List<LocalDate> dates = new ArrayList<>();
+    List<LocalDate> dates;
     switch (unit) {
       case "day"->dates = generateDateList(from, to, ChronoUnit.DAYS);
       case "week"->dates = generateWeeklyDates(from, to);
-      case "month" -> dates.addAll(generateDateList(from, to, ChronoUnit.MONTHS)
+      case "month" ->dates = new ArrayList<>(generateDateList(from, to, ChronoUnit.MONTHS)
                       .stream()
                       .map(date -> date.withDayOfMonth(date.lengthOfMonth()))
                       .toList());
       case "quarter"->dates = generateQuarterlyDates(from, to);
       case "year"->dates = new ArrayList<>(generateDateList(from, to, ChronoUnit.YEARS).stream()
-              .map(date -> date.withDayOfYear(date.lengthOfYear())) // 연도별 마지막 날 보장
-              .distinct() // 중복 제거
+              .map(date -> date.withDayOfYear(date.lengthOfYear()))
               .toList());
       default->throw new IllegalArgumentException("지원되지 않는 단위입니다: " + unit);
     }
@@ -399,7 +398,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
   private List<LocalDate> generateWeeklyDates(LocalDate from, LocalDate to) {
     List<LocalDate> weeklyDates = new ArrayList<>();
-    LocalDate currentWeek = to.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
+    LocalDate currentWeek = to;
 
     while (!currentWeek.isBefore(from)) {
       weeklyDates.add(currentWeek);
