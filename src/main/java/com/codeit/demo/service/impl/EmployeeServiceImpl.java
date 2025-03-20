@@ -1,5 +1,6 @@
 package com.codeit.demo.service.impl;
 
+import com.codeit.demo.dto.data.CursorPageResponseEmployeeDto;
 import com.codeit.demo.dto.data.EmployeeDistributionDto;
 import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
@@ -26,10 +27,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -103,7 +107,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<EmployeeDto> findAllEmployees(
+  public CursorPageResponseEmployeeDto findAllEmployees(
       String nameOrEmail,
       String employeeNumber,
       String departmentName,
@@ -111,12 +115,42 @@ public class EmployeeServiceImpl implements EmployeeService {
       LocalDate hireDateFrom,
       LocalDate hireDateTo,
       String status,
-      Pageable pageable) {
+      Long idAfter,
+      int size,
+      String sortField,
+      String sortDirection) {
 
-    Page<Employee> employeePage = employeeRepository.findEmployeesWithAdvancedFilters(
-        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, status, pageable);
+    Sort.Direction direction =
+        "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
 
-    return employeePage.map(employeeMapper::employeeToEmployeeDto);
+    Pageable pageable = PageRequest.of(0, size + 1, Sort.by(direction, sortField));
+
+    List<Employee> employees = employeeRepository.findEmployeesWithAdvancedFilters(
+        idAfter, nameOrEmail, employeeNumber, departmentName, position,
+        hireDateFrom, hireDateTo, status, pageable);
+
+    boolean hasNext = employees.size() > size;
+
+    if (hasNext) {
+      employees = employees.subList(0, size);
+    }
+
+    Long nextIdAfter = hasNext
+        ? employees.get(employees.size() - 1).getId()
+        : null;
+
+    List<EmployeeDto> employeeDtos = employees.stream()
+        .map(employeeMapper::employeeToEmployeeDto)
+        .collect(Collectors.toList());
+
+    return new CursorPageResponseEmployeeDto(
+        employeeDtos,
+        nextIdAfter != null ? nextIdAfter.toString() : null,
+        nextIdAfter,
+        size,
+        employeeRepository.count(), // totalElements
+        hasNext
+    );
   }
 
   @Override
@@ -230,15 +264,36 @@ public class EmployeeServiceImpl implements EmployeeService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<EmployeeDto> getEmployeesByDepartment(Long departmentId, Pageable pageable) {
-    log.info("Getting employees by department ID: {} with pageable: {}", departmentId, pageable);
+  public CursorPageResponseEmployeeDto getEmployeesByDepartment (Long departmentId, Long idAfter, int size) {
 
-    if (!departmentRepository.existsById(departmentId)) {
-      throw new DepartmentNotFoundException("부서를 찾을 수 없습니다: " + departmentId);
+    Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.ASC, "id"));
+
+    List<Employee> employees = employeeRepository.findEmployeesByDepartment(departmentId, idAfter, pageable);
+
+    boolean hasNext = employees.size() > size;
+
+    if (hasNext) {
+      employees = employees.subList(0, size);
     }
 
-    Page<Employee> employeePage = employeeRepository.findByDepartmentId(departmentId, pageable);
-    return employeePage.map(employeeMapper::employeeToEmployeeDto);
+    Long nextIdAfter = hasNext
+        ? employees.get(employees.size() - 1).getId()
+        : null;
+
+    List<EmployeeDto> employeeDtos = employees.stream()
+        .map(employeeMapper::employeeToEmployeeDto)
+        .collect(Collectors.toList());
+
+    long totalElements = employeeRepository.countByDepartmentId(departmentId);
+
+    return new CursorPageResponseEmployeeDto(
+        employeeDtos,
+        nextIdAfter != null ? nextIdAfter.toString() : null,
+        nextIdAfter,
+        size,
+        totalElements,
+        hasNext
+    );
   }
 
   @Override
