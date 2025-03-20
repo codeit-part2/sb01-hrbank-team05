@@ -29,14 +29,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
   @EntityGraph(attributePaths = {"department", "profileImage"})
   Optional<Employee> findTopByEmployeeNumberLikeOrderByEmployeeNumberDesc(String pattern);
 
-  @Query("SELECT e FROM Employee e " +
-      "WHERE (:nameOrEmail IS NULL OR e.name LIKE %:nameOrEmail% OR e.email LIKE %:nameOrEmail%) AND " +
-      "(:employeeNumber IS NULL OR e.employeeNumber LIKE %:employeeNumber%) AND " +
-      "(:departmentName IS NULL OR e.department.name LIKE %:departmentName%) AND " +
-      "(:position IS NULL OR e.position LIKE %:position%) AND " +
+  @Query(value = "SELECT e FROM Employee e " +
+      "WHERE (:nameOrEmail IS NULL OR e.name LIKE :nameOrEmail OR e.email LIKE :nameOrEmail) AND " +
+      "(:employeeNumber IS NULL OR e.employeeNumber LIKE :employeeNumber) AND " +
+      "(:departmentName IS NULL OR e.department.name LIKE :departmentName) AND " +
+      "(:position IS NULL OR e.position LIKE :position) AND " +
       "(:hireDateFrom IS NULL OR e.hireDate >= :hireDateFrom) AND " +
       "(:hireDateTo IS NULL OR e.hireDate <= :hireDateTo) AND " +
-      "(:status IS NULL OR CAST(e.status AS string) = :status)")
+      "(:status IS NULL OR CAST(e.status AS string) = :status)",
+      countQuery = "SELECT COUNT(e) FROM Employee e " +
+          "WHERE (:nameOrEmail IS NULL OR e.name LIKE :nameOrEmail OR e.email LIKE :nameOrEmail) AND " +
+          "(:employeeNumber IS NULL OR e.employeeNumber LIKE :employeeNumber) AND " +
+          "(:departmentName IS NULL OR e.department.name LIKE :departmentName) AND " +
+          "(:position IS NULL OR e.position LIKE :position) AND " +
+          "(:hireDateFrom IS NULL OR e.hireDate >= :hireDateFrom) AND " +
+          "(:hireDateTo IS NULL OR e.hireDate <= :hireDateTo) AND " +
+          "(:status IS NULL OR CAST(e.status AS string) = :status)")
   @EntityGraph(attributePaths = {"department", "profileImage"})
   Page<Employee> findEmployeesWithAdvancedFilters(
       @Param("nameOrEmail") String nameOrEmail,
@@ -47,6 +55,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("hireDateTo") LocalDate hireDateTo,
       @Param("status") String status,
       Pageable pageable);
+
 
   Optional<Employee> findByName(String name);
 
