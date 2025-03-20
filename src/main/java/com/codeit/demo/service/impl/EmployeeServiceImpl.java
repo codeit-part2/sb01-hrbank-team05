@@ -126,18 +126,48 @@ public class EmployeeServiceImpl implements EmployeeService {
       String sortField,
       String sortDirection) {
 
-    Sort.Direction direction =
-        "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+    // 정렬 방향 설정
+    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
 
-    Pageable pageable = PageRequest.of(0, size + 1, Sort.by(direction, sortField));
+    // 정렬 필드 설정
+    String sortProperty;
+    switch (sortField.toLowerCase()) {
+      case "employeenumber":
+        sortProperty = "employeeNumber";
+        break;
+      case "hiredate":
+        sortProperty = "hireDate";
+        break;
+      case "position":
+        sortProperty = "position"; // position 정렬 옵션 추가
+        break;
+      case "name":
+      default:
+        sortProperty = "name";
+        break;
+    }
+
+    // 페이지 및 정렬 정보 설정
+    Sort sort = Sort.by(direction, sortProperty);
+
+    Pageable pageable = PageRequest.of(0, size + 1, sort);
 
     List<Employee> employees = employeeRepository.findEmployeesWithAdvancedFilters(
-        idAfter, (Long) cursor, nameOrEmail, employeeNumber, departmentName, position,
-        hireDateFrom, hireDateTo, status, pageable);
+        nameOrEmail,
+        employeeNumber,
+        departmentName,
+        position,
+        hireDateFrom,
+        hireDateTo,
+        status,
+        idAfter,
+        (Long) cursor,
+        pageable);
 
-    boolean hasNext = employees.size() > size;
-
-    if (hasNext) {
+    // 결과 처리 및 반환
+    boolean hasNext = false;
+    if (employees.size() > size) {
+      hasNext = true;
       employees = employees.subList(0, size);
     }
 
