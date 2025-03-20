@@ -332,11 +332,10 @@ public class EmployeeServiceImpl implements EmployeeService {
   @Override
   @Transactional(readOnly = true)
   public long countEmployees(String status, LocalDate fromDate, LocalDate toDate) {
-    int count = 0;
-    if (fromDate==null||toDate == null) {
-      count = trendRepository.findEmployeeCountByDate(toDate);
+    if (toDate == null) {
+      toDate = LocalDate.now();
     }
-      return count;
+    return trendRepository.findEmployeeCountByDate(toDate)-trendRepository.findTotalResigned(toDate)+trendRepository.findTotalReturned(toDate);
   }
 
   @Override
