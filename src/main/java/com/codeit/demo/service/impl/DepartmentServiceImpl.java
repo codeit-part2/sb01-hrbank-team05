@@ -36,12 +36,15 @@ public class DepartmentServiceImpl implements DepartmentService {
   public CursorPageResponseDepartmentDto getAllDepartments(
       String nameOrDescription,
       Long idAfter,
+      Object cursor,
       int size) {
 
     Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.ASC, "id"));
 
+    Long cursorId = cursor != null ? Long.parseLong(cursor.toString()) : null;
+
     List<Department> departments = departmentRepository.findDepartments(
-        idAfter, nameOrDescription, pageable);
+        idAfter, cursorId, nameOrDescription, pageable);
 
     boolean hasNext = departments.size() > size;
 
@@ -49,7 +52,7 @@ public class DepartmentServiceImpl implements DepartmentService {
       departments = departments.subList(0, size);
     }
 
-    Long nextIdAfter = hasNext
+    Long nextCursor = hasNext
         ? departments.get(departments.size() - 1).getId()
         : null;
 
@@ -61,13 +64,14 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     return new CursorPageResponseDepartmentDto(
         departmentDtos,
-        nextIdAfter != null ? nextIdAfter.toString() : null,
-        nextIdAfter,
+        nextCursor != null ? nextCursor.toString() : null,
+        nextCursor, // idAfter 대신 nextCursor 사용
         size,
         totalElements,
         hasNext
     );
   }
+
 
 
   @Override

@@ -116,6 +116,7 @@ public class EmployeeServiceImpl implements EmployeeService {
       LocalDate hireDateTo,
       String status,
       Long idAfter,
+      Object cursor,
       int size,
       String sortField,
       String sortDirection) {
@@ -126,7 +127,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     Pageable pageable = PageRequest.of(0, size + 1, Sort.by(direction, sortField));
 
     List<Employee> employees = employeeRepository.findEmployeesWithAdvancedFilters(
-        idAfter, nameOrEmail, employeeNumber, departmentName, position,
+        idAfter, (Long) cursor, nameOrEmail, employeeNumber, departmentName, position,
         hireDateFrom, hireDateTo, status, pageable);
 
     boolean hasNext = employees.size() > size;
@@ -135,9 +136,9 @@ public class EmployeeServiceImpl implements EmployeeService {
       employees = employees.subList(0, size);
     }
 
-    Long nextIdAfter = hasNext
-        ? employees.get(employees.size() - 1).getId()
-        : null;
+    Long nextIdAfter = hasNext ? employees.get(employees.size() - 1).getId() : null;
+
+    Long nextCursor = hasNext ? employees.get(employees.size() - 1).getId() : null;
 
     List<EmployeeDto> employeeDtos = employees.stream()
         .map(employeeMapper::employeeToEmployeeDto)
@@ -145,10 +146,10 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     return new CursorPageResponseEmployeeDto(
         employeeDtos,
-        nextIdAfter != null ? nextIdAfter.toString() : null,
+        nextCursor != null ? nextCursor.toString() : null,
         nextIdAfter,
         size,
-        employeeRepository.count(), // totalElements
+        employeeRepository.count(),
         hasNext
     );
   }

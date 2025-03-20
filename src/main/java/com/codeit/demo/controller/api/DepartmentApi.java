@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "부서 관리", description = "부서 관리 API")
 public interface DepartmentApi {
 
-  @Operation(summary = "부서 목록 조회", description = "부서 목록을 커서 기반 페이지네이션으로 조회합니다.")
+  @Operation(summary = "부서 목록 조회", description = "부서 목록을 조회합니다.")
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "조회 성공",
           content = @Content(schema = @Schema(implementation = CursorPageResponseDepartmentDto.class))),
@@ -32,6 +32,7 @@ public interface DepartmentApi {
   ResponseEntity<CursorPageResponseDepartmentDto> getAllDepartments(
       @Parameter(description = "부서 이름 또는 설명") @RequestParam(required = false) String nameOrDescription,
       @Parameter(description = "이전 페이지 마지막 요소 ID (커서)") @RequestParam(required = false) Long idAfter,
+      @Parameter(description = "커서 (다음 페이지 시작점)") @RequestParam(required = false) Object cursor,
       @Parameter(description = "페이지 크기 (기본값: 10)") @RequestParam(defaultValue = "10") int size);
 
 

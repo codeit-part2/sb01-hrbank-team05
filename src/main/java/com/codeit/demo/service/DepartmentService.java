@@ -10,7 +10,7 @@ import org.springframework.data.domain.Pageable;
 public interface DepartmentService {
 
   // 모든 부서 조회
-  CursorPageResponseDepartmentDto getAllDepartments(String nameOrDescription, Long idAfter, int size);
+  CursorPageResponseDepartmentDto getAllDepartments(String nameOrDescription, Long idAfter, Object cursor, int size);
 
 
   // 아이디로 부서 조회

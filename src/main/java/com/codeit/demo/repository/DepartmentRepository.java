@@ -15,12 +15,15 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
   @Query("SELECT d FROM Department d " +
       "WHERE (:idAfter IS NULL OR d.id > :idAfter) AND " +
+      "(:cursor IS NULL OR d.id > :cursor) AND " +
       "(:nameOrDescription IS NULL OR d.name LIKE %:nameOrDescription% OR d.description LIKE %:nameOrDescription%) " +
       "ORDER BY d.id ASC")
   List<Department> findDepartments(
       @Param("idAfter") Long idAfter,
+      @Param("cursor") Long cursor,
       @Param("nameOrDescription") String nameOrDescription,
       Pageable pageable);
+
 
 
   @Modifying

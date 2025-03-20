@@ -77,6 +77,7 @@ public class EmployeeController implements EmployeeApi {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireDateTo,
       @RequestParam(required = false) String status,
       @RequestParam(required = false) Long idAfter,
+      @RequestParam(required = false) Object cursor,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(defaultValue = "id") String sortField,
       @RequestParam(defaultValue = "asc") String sortDirection) {
@@ -84,7 +85,7 @@ public class EmployeeController implements EmployeeApi {
     CursorPageResponseEmployeeDto response = employeeService.findAllEmployees(
         nameOrEmail, employeeNumber, departmentName, position,
         hireDateFrom, hireDateTo, status,
-        idAfter, size, sortField, sortDirection);
+        idAfter, cursor, size, sortField, sortDirection);
 
     return ResponseEntity.ok(response);
   }

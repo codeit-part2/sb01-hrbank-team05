@@ -12,8 +12,7 @@ public class CursorPageResponseEmployeeDto {
   private long totalElements;
   private boolean hasNext;
 
-  public CursorPageResponseEmployeeDto(List<EmployeeDto> content, String nextCursor,
-      Long nextIdAfter,
+  public CursorPageResponseEmployeeDto(List<EmployeeDto> content, String nextCursor, Long nextIdAfter,
       int size, long totalElements, boolean hasNext) {
     this.content = content;
     this.nextCursor = nextCursor;

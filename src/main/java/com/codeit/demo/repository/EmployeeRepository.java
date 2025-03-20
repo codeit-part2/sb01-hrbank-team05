@@ -31,6 +31,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
   @Query("SELECT e FROM Employee e " +
       "WHERE (:idAfter IS NULL OR e.id > :idAfter) AND " +
+      "(:cursor IS NULL OR e.id > :cursor) AND " +
       "(:nameOrEmail IS NULL OR e.name LIKE :nameOrEmail OR e.email LIKE :nameOrEmail) AND " +
       "(:employeeNumber IS NULL OR e.employeeNumber LIKE :employeeNumber) AND " +
       "(:departmentName IS NULL OR e.department.name LIKE :departmentName) AND " +
@@ -42,6 +43,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
   @EntityGraph(attributePaths = {"department", "profileImage"})
   List<Employee> findEmployeesWithAdvancedFilters(
       @Param("idAfter") Long idAfter,
+      @Param("cursor") Long cursor,
       @Param("nameOrEmail") String nameOrEmail,
       @Param("employeeNumber") String employeeNumber,
       @Param("departmentName") String departmentName,

@@ -27,10 +27,11 @@ public class DepartmentController implements DepartmentApi {
   public ResponseEntity<CursorPageResponseDepartmentDto> getAllDepartments(
       @RequestParam(required = false) String nameOrDescription,
       @RequestParam(required = false) Long idAfter,
+      @RequestParam(required = false) Object cursor,
       @RequestParam(defaultValue = "10") int size) {
 
     CursorPageResponseDepartmentDto response =
-        departmentService.getAllDepartments(nameOrDescription, idAfter, size);
+        departmentService.getAllDepartments(nameOrDescription, idAfter, cursor, size);
 
     return ResponseEntity.ok(response);
   }
