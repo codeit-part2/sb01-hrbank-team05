@@ -1,5 +1,6 @@
 package com.codeit.demo.service.impl;
 
+import com.codeit.demo.dto.data.CursorPageResponseEmployeeDto;
 import com.codeit.demo.dto.data.EmployeeDistributionDto;
 import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
@@ -8,6 +9,8 @@ import com.codeit.demo.dto.request.EmployeeUpdateRequest;
 import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.entity.Department;
 import com.codeit.demo.entity.Employee;
+import com.codeit.demo.repository.TrendRepository;
+import com.codeit.demo.service.ChangeLogService;
 import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.exception.DepartmentNotFoundException;
 import com.codeit.demo.exception.DuplicateEmailException;
@@ -17,19 +20,24 @@ import com.codeit.demo.repository.DepartmentRepository;
 import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.service.BinaryContentService;
 import com.codeit.demo.service.EmployeeService;
-import com.codeit.demo.util.CursorPageUtil;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.temporal.TemporalAdjusters;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +52,8 @@ public class EmployeeServiceImpl implements EmployeeService {
   private final DepartmentRepository departmentRepository;
   private final EmployeeMapper employeeMapper;
   private final BinaryContentService binaryContentService;
+  private final ChangeLogService changeLogService;
+  private final TrendRepository trendRepository;
 
 
   @Override
@@ -83,10 +93,12 @@ public class EmployeeServiceImpl implements EmployeeService {
       departmentRepository.incrementEmployeeCount(employee.getDepartment().getId());
     }
 
-
-
     // 저장 및 DTO 변환
     Employee savedEmployee = employeeRepository.save(employee);
+
+    // 직원 생성 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForCreation(savedEmployee, request);
+
     return employeeMapper.employeeToEmployeeDto(savedEmployee);
   }
 
@@ -100,7 +112,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<EmployeeDto> findAllEmployees(
+  public CursorPageResponseEmployeeDto findAllEmployees(
       String nameOrEmail,
       String employeeNumber,
       String departmentName,
@@ -108,40 +120,73 @@ public class EmployeeServiceImpl implements EmployeeService {
       LocalDate hireDateFrom,
       LocalDate hireDateTo,
       String status,
-      Pageable pageable) {
+      Long idAfter,
+      Object cursor,
+      int size,
+      String sortField,
+      String sortDirection) {
 
-    EmploymentStatus statusEnum = status != null ? convertStatusString(status) : null;
+    // 정렬 방향 설정
+    Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
 
-    Page<Employee> employeePage = employeeRepository.findEmployeesWithAdvancedFilters(
-        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, statusEnum, pageable);
-
-    return employeePage.map(employeeMapper::employeeToEmployeeDto);
-  }
-
-  private EmploymentStatus convertStatusString(String statusStr) {
-    if (statusStr == null) {
-      return null;
-    }
-    try {
-      return EmploymentStatus.valueOf(statusStr.toUpperCase());
-    } catch (IllegalArgumentException e) {
-      log.warn("Invalid status value: {}", statusStr);
-      return null;
-    }
-  }
-
-
-  // 커서 생성 헬퍼 메소드
-  private String buildCursor(Employee employee, String sortField) {
+    // 정렬 필드 설정
+    String sortProperty;
     switch (sortField.toLowerCase()) {
       case "employeenumber":
-        return employee.getEmployeeNumber();
+        sortProperty = "employeeNumber";
+        break;
       case "hiredate":
-        return employee.getHireDate().toString();
+        sortProperty = "hireDate";
+        break;
+      case "position":
+        sortProperty = "position"; // position 정렬 옵션 추가
+        break;
       case "name":
       default:
-        return employee.getId().toString(); // 기본은 ID 기반 커서
+        sortProperty = "name";
+        break;
     }
+
+    // 페이지 및 정렬 정보 설정
+    Sort sort = Sort.by(direction, sortProperty);
+
+    Pageable pageable = PageRequest.of(0, size + 1, sort);
+
+    List<Employee> employees = employeeRepository.findEmployeesWithAdvancedFilters(
+        nameOrEmail,
+        employeeNumber,
+        departmentName,
+        position,
+        hireDateFrom,
+        hireDateTo,
+        status,
+        idAfter,
+        (Long) cursor,
+        pageable);
+
+    // 결과 처리 및 반환
+    boolean hasNext = false;
+    if (employees.size() > size) {
+      hasNext = true;
+      employees = employees.subList(0, size);
+    }
+
+    Long nextIdAfter = hasNext ? employees.get(employees.size() - 1).getId() : null;
+
+    Long nextCursor = hasNext ? employees.get(employees.size() - 1).getId() : null;
+
+    List<EmployeeDto> employeeDtos = employees.stream()
+        .map(employeeMapper::employeeToEmployeeDto)
+        .collect(Collectors.toList());
+
+    return new CursorPageResponseEmployeeDto(
+        employeeDtos,
+        nextCursor != null ? nextCursor.toString() : null,
+        nextIdAfter,
+        size,
+        employeeRepository.count(),
+        hasNext
+    );
   }
 
   @Override
@@ -180,6 +225,8 @@ public class EmployeeServiceImpl implements EmployeeService {
       employee.setDepartment(null);
       departmentRepository.decrementEmployeeCount(oldDepartmentId);
     }
+    // 직원 정보 수정 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForUpdate(employee, request);
 
     employeeMapper.updateEmployeeFromRequest(request, employee);
 
@@ -241,111 +288,51 @@ public class EmployeeServiceImpl implements EmployeeService {
       departmentRepository.decrementEmployeeCount(employee.getDepartment().getId());
     }
 
+    // 직원 삭제 시 이력 생성 코드 추가
+    changeLogService.createChangeLogForDeletion(employee);
+
     // 기존 삭제 로직
     employeeRepository.delete(employee);
   }
 
-
-
-
   @Override
   @Transactional(readOnly = true)
-  public Page<EmployeeDto> getEmployeesByDepartment(Long departmentId, Pageable pageable) {
-    log.info("Getting employees by department ID: {} with pageable: {}", departmentId, pageable);
+  public CursorPageResponseEmployeeDto getEmployeesByDepartment (Long departmentId, Long idAfter, int size) {
 
-    if (!departmentRepository.existsById(departmentId)) {
-      throw new DepartmentNotFoundException("부서를 찾을 수 없습니다: " + departmentId);
+    Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.ASC, "id"));
+
+    List<Employee> employees = employeeRepository.findEmployeesByDepartment(departmentId, idAfter, pageable);
+
+    boolean hasNext = employees.size() > size;
+
+    if (hasNext) {
+      employees = employees.subList(0, size);
     }
 
-    Page<Employee> employeePage = employeeRepository.findByDepartmentId(departmentId, pageable);
-    return employeePage.map(employeeMapper::employeeToEmployeeDto);
-  }
+    Long nextIdAfter = hasNext
+        ? employees.get(employees.size() - 1).getId()
+        : null;
 
+    List<EmployeeDto> employeeDtos = employees.stream()
+        .map(employeeMapper::employeeToEmployeeDto)
+        .collect(Collectors.toList());
+
+    long totalElements = employeeRepository.countByDepartmentId(departmentId);
+
+    return new CursorPageResponseEmployeeDto(
+        employeeDtos,
+        nextIdAfter != null ? nextIdAfter.toString() : null,
+        nextIdAfter,
+        size,
+        totalElements,
+        hasNext
+    );
+  }
 
   @Override
   @Transactional(readOnly = true)
   public long countEmployees(String status, LocalDate startDate, LocalDate endDate) {
-    // 동적 쿼리 조건을 구성하기 위한 Specification 생성
-    Specification<Employee> spec = Specification.where(null);
-
-    // 상태 필터 적용
-    if (status != null && !status.isEmpty()) {
-      spec = spec.and((root, query, builder) ->
-          builder.equal(root.get("status"), status));
-    }
-
-    // 입사일 시작일 필터 적용
-    if (startDate != null) {
-      spec = spec.and((root, query, builder) ->
-          builder.greaterThanOrEqualTo(root.get("hireDate"), startDate));
-    }
-
-    // 입사일 종료일 필터 적용
-    if (endDate != null) {
-      spec = spec.and((root, query, builder) ->
-          builder.lessThanOrEqualTo(root.get("hireDate"), endDate));
-    }
-
-    return employeeRepository.count(spec);
-  }
-
-  @Override
-  public List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit) {
-    if(to==null) {
-      to=LocalDate.now();
-    }
-    if(from==null) {
-      from=calculateStart(to,unit);
-    }
-    List<LocalDate> dateRange = generateDateRange(from, to, unit);
-
-    List<EmployeeTrendDto> trends = new ArrayList<>();
-    Integer previousCount = null;
-
-    for (LocalDate date : dateRange) {
-      int currentCount = employeeRepository.findTotalCountNoResigned(date);
-      int change = (previousCount == null) ? 0 : currentCount - previousCount;
-      double changeRate = (previousCount == null || previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
-      trends.add(new EmployeeTrendDto(date, currentCount, change, changeRate));
-      previousCount = currentCount;
-    }
-
-    return trends;
-
-  }
-
-
-
-  private LocalDate calculateStart(LocalDate to, String unit) {
-    return switch (unit.toLowerCase()) {
-      case "day" -> to.minusDays(12);
-      case "week" -> to.minusWeeks(12);
-      case "month" -> to.minusMonths(12);
-      case "year" -> to.minusYears(12).with(TemporalAdjusters.firstDayOfYear());
-      case "quarter" -> {
-        int quarterStart = ((to.getMonthValue() - 1) / 3) * 3 + 1;
-        yield to.withMonth(quarterStart).with(TemporalAdjusters.firstDayOfMonth());
-      }
-      default -> to.minusMonths(12).with(TemporalAdjusters.firstDayOfMonth());
-    };
-  }
-
-  private List<LocalDate> generateDateRange(LocalDate from, LocalDate to, String unit) {
-    List<LocalDate> dates = new ArrayList<>();
-    LocalDate current = from;
-
-    while (!current.isAfter(to)) {
-      dates.add(current);
-      current = switch (unit.toLowerCase()) {
-        case "day" -> current.plusDays(1);
-        case "week" -> current.plusWeeks(1);
-        case "month" -> current.plusMonths(1);
-        case "year" -> current.plusYears(1);
-        case "quarter" -> current.plusMonths(3);
-        default -> current.plusMonths(1);
-      };
-    }
-    return dates;
+    return employeeRepository.countEmployeesByFilters(status, startDate, endDate);
   }
 
   @Override
@@ -418,7 +405,35 @@ public class EmployeeServiceImpl implements EmployeeService {
     return result;
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  public List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit) {
+    if (to == null) {
+      to = LocalDate.now();
+    }
+    if (from == null) {
+      from = calculateFrom(to, unit);
+    }
 
+    List<EmployeeTrendDto> trends = new ArrayList<>();
+    int previousCount = trendRepository.findEmployeeCountByDate(from);
+
+    LocalDate previousDate = null;
+    List<LocalDate> dateRange = generateTrendDateRange(from, to, unit);
+    for (LocalDate date : dateRange) {
+      int hires = (previousDate == null) ? 0 : trendRepository.findNewHires(previousDate.plusDays(1),date);
+      int resigns = (previousDate == null) ? 0 : trendRepository.findResigned(previousDate.plusDays(1), date);
+      int currentCount = previousCount + hires - resigns;
+
+      int change = hires - resigns; //previouscount-currentcount
+      double changeRate = (previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
+      changeRate = Math.round(changeRate * 10.0) / 10.0;
+      trends.add(new EmployeeTrendDto(date, currentCount, change, changeRate));
+      previousCount=currentCount;
+      previousDate = date;
+    }
+    return trends;
+  }
 
   private String generateEmployeeNumber() {
     int currentYear = LocalDate.now().getYear();
@@ -440,5 +455,74 @@ public class EmployeeServiceImpl implements EmployeeService {
     return yearPrefix + String.format("%03d", sequence);
   }
 
+  private List<LocalDate> generateTrendDateRange(LocalDate from, LocalDate to, String unit) {
+    List<LocalDate> dates;
+    switch (unit) {
+      case "day"->dates = generateDateList(from, to, ChronoUnit.DAYS);
+      case "week"->dates = generateWeeklyDates(from, to);
+      case "month" ->dates = new ArrayList<>(generateDateList(from, to, ChronoUnit.MONTHS)
+                      .stream()
+                      .map(date -> date.withDayOfMonth(date.lengthOfMonth()))
+                      .toList());
+      case "quarter"->dates = generateQuarterlyDates(from, to);
+      case "year"->dates = new ArrayList<>(generateDateList(from, to, ChronoUnit.YEARS).stream()
+              .map(date -> date.withDayOfYear(date.lengthOfYear()))
+              .toList());
+      default->throw new IllegalArgumentException("지원되지 않는 단위입니다: " + unit);
+    }
+    if (!dates.contains(to)) {
+      dates.add(to);
+    }
+    return dates;
+  }
+
+  private List<LocalDate> generateDateList(LocalDate from, LocalDate to, ChronoUnit unit) {
+    return IntStream.iterate(0, i -> from.plus(i, unit).isBefore(to) || from.plus(i, unit).isEqual(to), i -> i + 1)
+            .mapToObj(i -> from.plus(i, unit))
+            .toList();
+  }
+
+  private List<LocalDate> generateWeeklyDates(LocalDate from, LocalDate to) {
+    List<LocalDate> weeklyDates = new ArrayList<>();
+    LocalDate currentWeek = to;
+
+    while (!currentWeek.isBefore(from)) {
+      weeklyDates.add(currentWeek);
+      currentWeek = currentWeek.minusWeeks(1);
+    }
+    Collections.reverse(weeklyDates);
+    return weeklyDates;
+  }
+
+  private List<LocalDate> generateQuarterlyDates(LocalDate from, LocalDate to) {
+    List<LocalDate> quarterlyDates = new ArrayList<>();
+    LocalDate current = getQuarterEndDate(from);
+    while (!current.isAfter(to)) {
+      quarterlyDates.add(current);
+      current = getQuarterEndDate(current.plusMonths(3)); // 다음 분기 마지막 날로 이동
+    }
+
+    return quarterlyDates;
+  }
+
+  private LocalDate getQuarterEndDate(LocalDate date) {
+    return switch (date.getMonthValue()) {
+      case 1, 2, 3 -> LocalDate.of(date.getYear(), 3, 31);
+      case 4, 5, 6 -> LocalDate.of(date.getYear(), 6, 30);
+      case 7, 8, 9 -> LocalDate.of(date.getYear(), 9, 30);
+      default -> LocalDate.of(date.getYear(), 12, 31);
+    };
+  }
+
+  private LocalDate calculateFrom(LocalDate to, String unit) {
+      return switch (unit.toLowerCase()) {
+          case "day" -> to.minusDays(12);
+          case "week" -> to.minusWeeks(12);
+          case "month" -> to.minusMonths(12).withDayOfMonth(to.minusMonths(12).lengthOfMonth());
+          case "quarter" -> getQuarterEndDate(to.minusMonths(36));
+          case "year" -> LocalDate.of(to.getYear() - 12, 12, 31);
+          default -> to.minusMonths(12);
+      };
+  }
 
 }

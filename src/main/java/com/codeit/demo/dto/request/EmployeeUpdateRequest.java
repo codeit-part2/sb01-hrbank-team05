@@ -2,6 +2,7 @@ package com.codeit.demo.dto.request;
 
 import com.codeit.demo.entity.enums.EmploymentStatus;
 import jakarta.validation.constraints.NotBlank;
+import java.time.LocalDate;
 
 public record EmployeeUpdateRequest(
     @NotBlank(message = "Name is required")
@@ -13,7 +14,7 @@ public record EmployeeUpdateRequest(
     @NotBlank(message = "Position is required")
     String position,
     @NotBlank(message = "HireDate is required")
-    String hireDate,
+    LocalDate hireDate,
     @NotBlank(message = "Status is required")
     EmploymentStatus status,
     String memo
