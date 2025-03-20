@@ -21,7 +21,9 @@ import com.codeit.demo.service.BinaryContentService;
 import com.codeit.demo.service.EmployeeService;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -229,9 +231,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     employeeRepository.delete(employee);
   }
 
-
-
-
   @Override
   @Transactional(readOnly = true)
   public Page<EmployeeDto> getEmployeesByDepartment(Long departmentId, Pageable pageable) {
@@ -332,25 +331,19 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     List<EmployeeTrendDto> trends = new ArrayList<>();
-    Integer previousCount = trendRepository.findEmployeeCountByDate(from);
+    int previousCount = trendRepository.findEmployeeCountByDate(from);
     LocalDate previousDate = null;
 
     List<LocalDate> dateRange = generateTrendDateRange(from, to, unit);
     for (LocalDate date : dateRange) {
-      int count = trendRepository.findEmployeeCountByDate(date);
       int hires = (previousDate == null) ? 0 : trendRepository.findNewHiresBetween(previousDate.plusDays(1), date);
       int resigns = (previousDate == null) ? 0 : trendRepository.findResignedBetween(previousDate.plusDays(1), date);
+      previousCount = (previousCount == 0) ? trendRepository.findEmployeeCountByDate(date) : previousCount + hires - resigns;
 
-      if (previousCount == null) {
-        previousCount = count;
-      }
-
-      count = previousCount + hires -resigns;
-      int change = count - previousCount;
+      int change = hires - resigns;
       double changeRate = (previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
       changeRate = Math.round(changeRate * 10.0) / 10.0;
-      trends.add(new EmployeeTrendDto(date, count, change, changeRate));
-      previousCount = count;
+      trends.add(new EmployeeTrendDto(date, previousCount, change, changeRate));
       previousDate = date;
     }
     return trends;
@@ -376,74 +369,71 @@ public class EmployeeServiceImpl implements EmployeeService {
     return yearPrefix + String.format("%03d", sequence);
   }
 
-  private LocalDate getQuarterEndDate(LocalDate date) {
-    int month = date.getMonthValue();
-    if (month <= 3) return LocalDate.of(date.getYear(), 3, 31);
-    if (month <= 6) return LocalDate.of(date.getYear(), 6, 30);
-    if (month <= 9) return LocalDate.of(date.getYear(), 9, 30);
-    return LocalDate.of(date.getYear(), 12, 31);
-  }
-
   private List<LocalDate> generateTrendDateRange(LocalDate from, LocalDate to, String unit) {
     List<LocalDate> dates = new ArrayList<>();
-    dates.add(from);
-
     switch (unit) {
-      case "day":
-        dates.addAll(IntStream.iterate(1, i -> from.plusDays(i).isBefore(to) || from.plusDays(i).isEqual(to), i -> i + 1)
-                .mapToObj(from::plusDays)
-                .toList());
-        break;
-      case "week":
-        LocalDate today = LocalDate.now();
-        List<LocalDate> weeklyDates = new ArrayList<>();
-
-        LocalDate currentWeek = today.with(TemporalAdjusters.previousOrSame(today.getDayOfWeek()));
-
-        while (currentWeek.isAfter(from) || currentWeek.isEqual(from)) {
-          weeklyDates.add(currentWeek);
-          currentWeek = currentWeek.minusWeeks(1);
-        }
-        // 최신순 정렬
-        Collections.reverse(weeklyDates);
-        dates.addAll(weeklyDates);
-        break;
-      case "month":
-        dates.addAll(IntStream.iterate(1, i -> from.plusMonths(i).isBefore(to) || from.plusMonths(i).isEqual(to), i -> i + 1)
-                .mapToObj(from::plusMonths)
-                .map(date -> date.withDayOfMonth(date.lengthOfMonth()))
-                .toList());
-        break;
-      case "quarter":
-        dates.addAll(IntStream.iterate(1, i -> getQuarterEndDate(from.plusMonths(i * 3L)).isBefore(to) || getQuarterEndDate(from.plusMonths(i * 3L)).isEqual(to), i -> i + 1)
-                .mapToObj(i -> getQuarterEndDate(from.plusMonths(i * 3L)))
-                .toList());
-        break;
-      case "year":
-        dates.addAll(IntStream.iterate(1, i -> from.plusYears(i).isBefore(to) || from.plusYears(i).isEqual(to), i -> i + 1)
-                .mapToObj(from::plusYears)
-                .map(date -> LocalDate.of(date.getYear(), 12, 31))
-                .toList());
-        break;
-      default:
-        throw new IllegalArgumentException("지원되지 않는 단위입니다: " + unit);
+      case "day"->dates = generateDateList(from, to, ChronoUnit.DAYS);
+      case "week"->dates = generateWeeklyDates(from, to);
+      case "month" -> dates.addAll(generateDateList(from, to, ChronoUnit.MONTHS)
+                      .stream()
+                      .map(date -> date.withDayOfMonth(date.lengthOfMonth()))
+                      .toList());
+      case "quarter"->dates = generateQuarterlyDates(from, to);
+      case "year"->dates = new ArrayList<>(generateDateList(from, to, ChronoUnit.YEARS).stream()
+              .map(date -> date.withDayOfYear(date.lengthOfYear())) // 연도별 마지막 날 보장
+              .distinct() // 중복 제거
+              .toList());
+      default->throw new IllegalArgumentException("지원되지 않는 단위입니다: " + unit);
     }
-
     if (!dates.contains(to)) {
       dates.add(to);
     }
-
     return dates;
+  }
+
+  private List<LocalDate> generateDateList(LocalDate from, LocalDate to, ChronoUnit unit) {
+    return IntStream.iterate(0, i -> from.plus(i, unit).isBefore(to) || from.plus(i, unit).isEqual(to), i -> i + 1)
+            .mapToObj(i -> from.plus(i, unit))
+            .toList();
+  }
+
+  private List<LocalDate> generateWeeklyDates(LocalDate from, LocalDate to) {
+    List<LocalDate> weeklyDates = new ArrayList<>();
+    LocalDate currentWeek = to.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
+
+    while (!currentWeek.isBefore(from)) {
+      weeklyDates.add(currentWeek);
+      currentWeek = currentWeek.minusWeeks(1);
+    }
+    Collections.reverse(weeklyDates);
+    return weeklyDates;
+  }
+
+  private List<LocalDate> generateQuarterlyDates(LocalDate from, LocalDate to) {
+    List<LocalDate> quarterlyDates = new ArrayList<>();
+    LocalDate current = getQuarterEndDate(from);
+    while (!current.isAfter(to)) {
+      quarterlyDates.add(current);
+      current = getQuarterEndDate(current.plusMonths(3)); // 다음 분기 마지막 날로 이동
+    }
+
+    return quarterlyDates;
+  }
+
+  private LocalDate getQuarterEndDate(LocalDate date) {
+    return switch (date.getMonthValue()) {
+      case 1, 2, 3 -> LocalDate.of(date.getYear(), 3, 31);
+      case 4, 5, 6 -> LocalDate.of(date.getYear(), 6, 30);
+      case 7, 8, 9 -> LocalDate.of(date.getYear(), 9, 30);
+      default -> LocalDate.of(date.getYear(), 12, 31);
+    };
   }
 
   private LocalDate calculateFrom(LocalDate to, String unit) {
       return switch (unit.toLowerCase()) {
           case "day" -> to.minusDays(12);
           case "week" -> to.minusWeeks(12);
-          case "month" -> {
-              LocalDate from = to.minusMonths(12);
-              yield from.withDayOfMonth(from.lengthOfMonth());
-          }
+          case "month" -> to.minusMonths(12).withDayOfMonth(to.minusMonths(12).lengthOfMonth());
           case "quarter" -> getQuarterEndDate(to.minusMonths(36));
           case "year" -> LocalDate.of(to.getYear() - 12, 12, 31);
           default -> to.minusMonths(12);
