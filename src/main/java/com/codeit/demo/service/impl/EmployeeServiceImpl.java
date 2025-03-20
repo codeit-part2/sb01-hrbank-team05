@@ -8,6 +8,7 @@ import com.codeit.demo.dto.request.EmployeeUpdateRequest;
 import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.entity.Department;
 import com.codeit.demo.entity.Employee;
+import com.codeit.demo.repository.TrendRepository;
 import com.codeit.demo.service.ChangeLogService;
 import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.exception.DepartmentNotFoundException;
@@ -23,14 +24,16 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.IntStream;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,6 +48,7 @@ public class EmployeeServiceImpl implements EmployeeService {
   private final EmployeeMapper employeeMapper;
   private final BinaryContentService binaryContentService;
   private final ChangeLogService changeLogService;
+  private final TrendRepository trendRepository;
 
 
   @Override
@@ -247,66 +251,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     return employeeRepository.countEmployeesByFilters(status, startDate, endDate);
   }
 
-
-  @Override
-  public List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit) {
-    if(to==null) {
-      to=LocalDate.now();
-    }
-    if(from==null) {
-      from=calculateStart(to,unit);
-    }
-    List<LocalDate> dateRange = generateDateRange(from, to, unit);
-
-    List<EmployeeTrendDto> trends = new ArrayList<>();
-    Integer previousCount = null;
-
-    for (LocalDate date : dateRange) {
-      int currentCount = employeeRepository.findTotalCountNoResigned(date);
-      int change = (previousCount == null) ? 0 : currentCount - previousCount;
-      double changeRate = (previousCount == null || previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
-      trends.add(new EmployeeTrendDto(date, currentCount, change, changeRate));
-      previousCount = currentCount;
-    }
-
-    return trends;
-
-  }
-
-
-
-  private LocalDate calculateStart(LocalDate to, String unit) {
-    return switch (unit.toLowerCase()) {
-      case "day" -> to.minusDays(12);
-      case "week" -> to.minusWeeks(12);
-      case "month" -> to.minusMonths(12);
-      case "year" -> to.minusYears(12).with(TemporalAdjusters.firstDayOfYear());
-      case "quarter" -> {
-        int quarterStart = ((to.getMonthValue() - 1) / 3) * 3 + 1;
-        yield to.withMonth(quarterStart).with(TemporalAdjusters.firstDayOfMonth());
-      }
-      default -> to.minusMonths(12).with(TemporalAdjusters.firstDayOfMonth());
-    };
-  }
-
-  private List<LocalDate> generateDateRange(LocalDate from, LocalDate to, String unit) {
-    List<LocalDate> dates = new ArrayList<>();
-    LocalDate current = from;
-
-    while (!current.isAfter(to)) {
-      dates.add(current);
-      current = switch (unit.toLowerCase()) {
-        case "day" -> current.plusDays(1);
-        case "week" -> current.plusWeeks(1);
-        case "month" -> current.plusMonths(1);
-        case "year" -> current.plusYears(1);
-        case "quarter" -> current.plusMonths(3);
-        default -> current.plusMonths(1);
-      };
-    }
-    return dates;
-  }
-
   @Override
   @Transactional(readOnly = true)
   public List<EmployeeDistributionDto> getEmployeeDistribution(String groupBy) {
@@ -377,7 +321,40 @@ public class EmployeeServiceImpl implements EmployeeService {
     return result;
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  public List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit) {
+    if (to == null) {
+      to = LocalDate.now();
+    }
+    if (from == null) {
+      from = calculateFrom(to, unit);
+    }
 
+    List<EmployeeTrendDto> trends = new ArrayList<>();
+    Integer previousCount = trendRepository.findEmployeeCountByDate(from);
+    LocalDate previousDate = null;
+
+    List<LocalDate> dateRange = generateTrendDateRange(from, to, unit);
+    for (LocalDate date : dateRange) {
+      int count = trendRepository.findEmployeeCountByDate(date);
+      int hires = (previousDate == null) ? 0 : trendRepository.findNewHiresBetween(previousDate.plusDays(1), date);
+      int resigns = (previousDate == null) ? 0 : trendRepository.findResignedBetween(previousDate.plusDays(1), date);
+
+      if (previousCount == null) {
+        previousCount = count;
+      }
+
+      count = previousCount + hires -resigns;
+      int change = count - previousCount;
+      double changeRate = (previousCount == 0) ? 0.0 : ((double) change / previousCount) * 100;
+      changeRate = Math.round(changeRate * 10.0) / 10.0;
+      trends.add(new EmployeeTrendDto(date, count, change, changeRate));
+      previousCount = count;
+      previousDate = date;
+    }
+    return trends;
+  }
 
   private String generateEmployeeNumber() {
     int currentYear = LocalDate.now().getYear();
@@ -399,5 +376,78 @@ public class EmployeeServiceImpl implements EmployeeService {
     return yearPrefix + String.format("%03d", sequence);
   }
 
+  private LocalDate getQuarterEndDate(LocalDate date) {
+    int month = date.getMonthValue();
+    if (month <= 3) return LocalDate.of(date.getYear(), 3, 31);
+    if (month <= 6) return LocalDate.of(date.getYear(), 6, 30);
+    if (month <= 9) return LocalDate.of(date.getYear(), 9, 30);
+    return LocalDate.of(date.getYear(), 12, 31);
+  }
+
+  private List<LocalDate> generateTrendDateRange(LocalDate from, LocalDate to, String unit) {
+    List<LocalDate> dates = new ArrayList<>();
+    dates.add(from);
+
+    switch (unit) {
+      case "day":
+        dates.addAll(IntStream.iterate(1, i -> from.plusDays(i).isBefore(to) || from.plusDays(i).isEqual(to), i -> i + 1)
+                .mapToObj(from::plusDays)
+                .toList());
+        break;
+      case "week":
+        LocalDate today = LocalDate.now();
+        List<LocalDate> weeklyDates = new ArrayList<>();
+
+        LocalDate currentWeek = today.with(TemporalAdjusters.previousOrSame(today.getDayOfWeek()));
+
+        while (currentWeek.isAfter(from) || currentWeek.isEqual(from)) {
+          weeklyDates.add(currentWeek);
+          currentWeek = currentWeek.minusWeeks(1);
+        }
+        // 최신순 정렬
+        Collections.reverse(weeklyDates);
+        dates.addAll(weeklyDates);
+        break;
+      case "month":
+        dates.addAll(IntStream.iterate(1, i -> from.plusMonths(i).isBefore(to) || from.plusMonths(i).isEqual(to), i -> i + 1)
+                .mapToObj(from::plusMonths)
+                .map(date -> date.withDayOfMonth(date.lengthOfMonth()))
+                .toList());
+        break;
+      case "quarter":
+        dates.addAll(IntStream.iterate(1, i -> getQuarterEndDate(from.plusMonths(i * 3L)).isBefore(to) || getQuarterEndDate(from.plusMonths(i * 3L)).isEqual(to), i -> i + 1)
+                .mapToObj(i -> getQuarterEndDate(from.plusMonths(i * 3L)))
+                .toList());
+        break;
+      case "year":
+        dates.addAll(IntStream.iterate(1, i -> from.plusYears(i).isBefore(to) || from.plusYears(i).isEqual(to), i -> i + 1)
+                .mapToObj(from::plusYears)
+                .map(date -> LocalDate.of(date.getYear(), 12, 31))
+                .toList());
+        break;
+      default:
+        throw new IllegalArgumentException("지원되지 않는 단위입니다: " + unit);
+    }
+
+    if (!dates.contains(to)) {
+      dates.add(to);
+    }
+
+    return dates;
+  }
+
+  private LocalDate calculateFrom(LocalDate to, String unit) {
+      return switch (unit.toLowerCase()) {
+          case "day" -> to.minusDays(12);
+          case "week" -> to.minusWeeks(12);
+          case "month" -> {
+              LocalDate from = to.minusMonths(12);
+              yield from.withDayOfMonth(from.lengthOfMonth());
+          }
+          case "quarter" -> getQuarterEndDate(to.minusMonths(36));
+          case "year" -> LocalDate.of(to.getYear() - 12, 12, 31);
+          default -> to.minusMonths(12);
+      };
+  }
 
 }
