@@ -1,7 +1,9 @@
 package com.codeit.demo.repository;
 
 import com.codeit.demo.entity.Employee;
+import com.codeit.demo.entity.enums.EmploymentStatus;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -54,12 +56,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("cursor") Long cursor,
       Pageable pageable);
 
+
+  @Query("SELECT COUNT(e) FROM Employee e " +
+      "WHERE (:status IS NULL OR CAST(e.status AS string) = CAST(:status AS string)) " +
+      "AND (:startDate IS NULL OR e.hireDate >= :startDate) " +
+      "AND (:endDate IS NULL OR e.hireDate <= :endDate)")
+  long countEmployeesByFilters(@Param("status") EmploymentStatus status,
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate);
+
   @Query("SELECT e FROM Employee e WHERE e.department.id = :departmentId AND (:idAfter IS NULL OR e.id > :idAfter) ORDER BY e.id ASC")
   @EntityGraph(attributePaths = {"department", "profileImage"})
   List<Employee> findEmployeesByDepartment(
       @Param("departmentId") Long departmentId,
       @Param("idAfter") Long idAfter,
       Pageable pageable);
+
 
   Optional<Employee> findByName(String name);
 
@@ -75,6 +87,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
   @Query("SELECT e.status, COUNT(e) FROM Employee e GROUP BY e.status ORDER BY COUNT(e) DESC")
   List<Object[]> countEmployeesByStatus();
+
+
+  //lastBackupTime 이후에 변경된 직원 데이터가 있는지 확인
+  boolean existsByUpdatedAtAfter(LocalDateTime lastBackupTime);
 
   @Query("SELECT COUNT(e) FROM Employee e " +
       "WHERE (:status IS NULL OR CAST(e.status AS string)  = :status) " +

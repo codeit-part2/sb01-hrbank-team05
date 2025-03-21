@@ -39,6 +39,26 @@ public class BinaryContentServiceImpl implements BinaryContentService {
     return savedContent;
   }
 
+
+  @Transactional
+  public Long storeFile(byte[] fileData, String fileName) {
+    try {
+      BinaryContent binaryContent = new BinaryContent(
+          fileName,
+          fileData.length,
+          "application/octet-stream" // 일반적인 바이너리 파일 타입
+      );
+
+      BinaryContent savedContent = binaryContentRepository.save(binaryContent);
+      binaryContentStorage.put(savedContent.getId(), fileData);
+
+      log.info("파일 저장 완료: {}", fileName);
+      return savedContent.getId();
+    } catch (Exception e) {
+      throw new FileStorageException("파일 저장 중 오류 발생: " + fileName, e);
+    }
+  }
+
   public BinaryContent findById(Long id) {
     return binaryContentRepository.findById(id)
         .orElseThrow(() -> new FileNotFoundException("파일을 찾을 수 없습니다: " + id));

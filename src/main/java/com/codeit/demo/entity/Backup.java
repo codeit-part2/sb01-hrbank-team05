@@ -15,6 +15,8 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -35,12 +37,32 @@ public class Backup {
   private LocalDateTime endedAt;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "status", nullable = false)
   private BackupStatus status;
 
-  @ManyToOne (fetch = FetchType.LAZY, optional = false)
+  @ManyToOne (fetch = FetchType.LAZY)
   @JoinColumn(name = "file_id")
   private BinaryContent file;
 
   // Getters and Setters
+  public void setStatus(BackupStatus status) {
+    this.status = status;
+  }
+
+  public void setStartedAt(LocalDateTime startedAt) {
+    this.startedAt = startedAt;
+  }
+
+  public void setEndedAt(LocalDateTime endedAt) {
+    this.endedAt = endedAt;
+  }
+
+  public void setWorker(String worker) {
+    this.worker = worker;
+  }
+
+  public void setFileId(BinaryContent file) {
+    this.file = file;
+  }
 }
