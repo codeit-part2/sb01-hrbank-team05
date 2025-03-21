@@ -117,7 +117,7 @@ public class EmployeeServiceImpl implements EmployeeService {
       LocalDate hireDateTo,
       String status,
       Long idAfter,
-      Object cursor,
+      String cursor,
       int size,
       String sortField,
       String sortDirection) {
@@ -148,6 +148,16 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     Pageable pageable = PageRequest.of(0, size + 1, sort);
 
+    // cursor를 Long으로 변환
+    Long cursorLong = null;
+    if (cursor != null && !cursor.isEmpty()) {
+      try {
+        cursorLong = Long.parseLong(cursor);
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException("Invalid cursor value: " + cursor + ". It must be a valid Long.", e);
+      }
+    }
+
     List<Employee> employees = employeeRepository.findEmployeesWithAdvancedFilters(
         nameOrEmail,
         employeeNumber,
@@ -157,7 +167,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         hireDateTo,
         status,
         idAfter,
-        (Long) cursor,
+        cursorLong,
         pageable);
 
     // 결과 처리 및 반환

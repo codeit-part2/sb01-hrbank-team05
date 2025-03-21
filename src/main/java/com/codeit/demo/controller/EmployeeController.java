@@ -75,7 +75,7 @@ public class EmployeeController implements EmployeeApi {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireDateTo,
       @RequestParam(required = false) String status,
       @RequestParam(required = false) Long idAfter,
-      @RequestParam(required = false) Object cursor,
+      @RequestParam(required = false) String cursor,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(defaultValue = "id") String sortField,
       @RequestParam(defaultValue = "asc") String sortDirection) {
@@ -106,20 +106,6 @@ public class EmployeeController implements EmployeeApi {
     employeeService.deleteEmployee(id);
     return ResponseEntity.noContent().build();
   }
-
-  @Override
-  @GetMapping("/department/{departmentId}")
-  public ResponseEntity<CursorPageResponseEmployeeDto> getEmployeesByDepartment(
-      @PathVariable Long departmentId,
-      @RequestParam(required = false) Long idAfter,
-      @RequestParam(defaultValue = "10") int size) {
-
-    CursorPageResponseEmployeeDto response =
-        employeeService.getEmployeesByDepartment(departmentId, idAfter, size);
-
-    return ResponseEntity.ok(response);
-  }
-
 
   @Override
   @GetMapping("/stats/trend")
