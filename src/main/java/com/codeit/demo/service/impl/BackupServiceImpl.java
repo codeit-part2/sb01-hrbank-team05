@@ -1,6 +1,7 @@
 package com.codeit.demo.service.impl;
 
 import static com.codeit.demo.entity.enums.BackupStatus.COMPLETED;
+import static com.codeit.demo.entity.enums.BackupStatus.IN_PROGRESS;
 import static com.codeit.demo.entity.enums.BackupStatus.valueOf;
 
 import com.codeit.demo.dto.response.BackupHistoryDto;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,6 +32,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BackupServiceImpl {
@@ -37,7 +40,7 @@ public class BackupServiceImpl {
   private final EmployeeRepository employeeRepository;
   private final BinaryContentServiceImpl binaryContentService;
   private final BinaryContentStorage binaryContentStorage;
-  private String backupDirectory = "./hrbank05/file/backup";
+  private String backupDirectory = "./hrBank05/backup";
 
   //자동 배치 시스템 시간 단위
 
@@ -62,24 +65,25 @@ public class BackupServiceImpl {
 
   // 2. 데이터 백업 필요 시 데이터 백업 이력을 등록
   public Backup startBackup(String worker) { //worker ip주소 어떻게 얻을 건지 고민하기
-    Backup history = new Backup();
-    history.setWorker(worker);
-    history.setStartedAt(LocalDateTime.now());
+    Backup history = new Backup(worker, IN_PROGRESS);
+    //history.setWorker(worker);
+    /*history.setStartedAt(LocalDateTime.now());
+    history.setStatus(BackupStatus.IN_PROGRESS);*/
     history.setEndedAt(LocalDateTime.now());
-    history.setStatus(BackupStatus.IN_PROGRESS);
     return backupRepository.save(history);
   }
 
   // 3. 백업 생성
-  public void performBackup(String worker) {
+  public BackupHistoryDto performBackup(String worker) {
     // 백업 필요 여부 X
     if (!isBackupNeeded()) {
-      Backup skippedHistory = new Backup();
-      skippedHistory.setWorker(worker);
-      skippedHistory.setStartedAt(LocalDateTime.now());
-      skippedHistory.setStatus(BackupStatus.SKIP);
+      Backup skippedHistory = new Backup(worker, BackupStatus.SKIPPED);
+  /*    skippedHistory.setWorker(worker);
+      skippedHistory.setStartedAt(LocalDateTime.now());*/
+      //skippedHistory.setStatus(BackupStatus.SKIPPED);
+      skippedHistory.setEndedAt(LocalDateTime.now());
       backupRepository.save(skippedHistory); // 필요없다면 스킵으로 저장 및 종료
-      return;
+      return new BackupHistoryDto(skippedHistory);
     }
 
     // 백업 필요 여부 O, 새로운 백업 생성
@@ -113,12 +117,14 @@ public class BackupServiceImpl {
         BinaryContent binaryContent = binaryContentService.findById(fileId);
         history.setFileId(binaryContent); // BinaryContent 객체를 Backup에 설정
       } catch (IOException ex) {
-        ex.printStackTrace();
+        log.error("파일 저장 중 실패", ex);
       }
     } finally {
       backupRepository.save(history);
     }
+    return new BackupHistoryDto(history);
   }
+
 
 
   private List<String> fetchEmployeeDataInChunks() {
@@ -130,17 +136,15 @@ public class BackupServiceImpl {
       Pageable pageable = PageRequest.of(page, pageSize);
       Page<Employee> employeePage = employeeRepository.findAll(pageable);
       List<String> chunkData = employeePage.getContent().stream()
-          .map(employee -> employee.toCsvString()) // Employee 엔티티를 CSV 문자열로 변환
-          .collect(Collectors.toList());
+          .map(Employee::toCsvString) // Employee 엔티티를 CSV 문자열로 변환
+          .toList();
 
       allData.addAll(chunkData);
-
       if (employeePage.isLast()) {
         break;
       }
       page++;
     }
-
     return allData;
   }
 
@@ -159,20 +163,20 @@ public class BackupServiceImpl {
     Page<Backup> backupHistoryPage;
     if (idAfter != null) {
       backupHistoryPage = backupRepository.findByIdAfterAndFilters(
-          idAfter, worker, status, startedAtFrom, startedAtTo, pageable);
+          idAfter, worker,startedAtFrom, startedAtTo,status, pageable);
     } else if (cursor != null) {
       Long cursorId = Long.parseLong(cursor);
       backupHistoryPage = backupRepository.findByIdAfterAndFilters(
-          cursorId, worker, status, startedAtFrom, startedAtTo, pageable);
+          cursorId, worker, startedAtFrom, startedAtTo,status, pageable);
     } else {
       backupHistoryPage = backupRepository.findByFilters(
-          worker, status, startedAtFrom, startedAtTo, pageable);
+          worker,startedAtFrom, startedAtTo, status, pageable);
     }
 
     // DTO 변환
     List<BackupHistoryDto> content = backupHistoryPage.getContent().stream()
         .map(BackupHistoryDto::new)
-        .collect(Collectors.toList());
+        .toList();
 
     // 다음 페이지 정보 계산
     boolean hasNext = backupHistoryPage.hasNext();

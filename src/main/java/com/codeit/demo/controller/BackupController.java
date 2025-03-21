@@ -23,16 +23,17 @@ public class BackupController {
   private BackupServiceImpl backupService;
 
   @PostMapping("")
-  public ResponseEntity<String> createBackup() {
-    String localIp = null;
+  public ResponseEntity<BackupHistoryDto> createBackup() {
+    String localIp;
     try {
       localIp = InetAddress.getLocalHost().getHostAddress();
     } catch (UnknownHostException e) {
       throw new RuntimeException(e);
     }
-    backupService.performBackup(localIp);
-    return ResponseEntity.ok("백업 생성이 시작되었습니다.");
+    BackupHistoryDto result = backupService.performBackup(localIp);
+    return ResponseEntity.ok(result);
   }
+
 
   @GetMapping("")
   public ResponseEntity<CursorPageResponseBackupDto<?>> getBackupHistory(

@@ -14,8 +14,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BackupRepository extends JpaRepository<Backup, Long> {
 
-    @Query("SELECT b FROM Backup b WHERE b.status = :status ORDER BY b.endedAt DESC")
+    @Query("SELECT b FROM Backup b WHERE b.status = :status ORDER BY b.endedAt DESC limit 1")
     Optional<Backup> findLastBackup(@Param("status") BackupStatus status);
+
 
     @Query("SELECT b FROM Backup b WHERE " +
         "(COALESCE(:worker, '') = '' OR b.worker LIKE CONCAT('%', :worker, '%')) AND " +
@@ -24,9 +25,9 @@ public interface BackupRepository extends JpaRepository<Backup, Long> {
         "(COALESCE(:startedAtTo, NULL) IS NULL OR b.startedAt <= :startedAtTo)")
     Page<Backup> findByFilters(
         @Param("worker") String worker,
-        @Param("status") BackupStatus status,
         @Param("startedAtFrom") LocalDateTime startedAtFrom,
         @Param("startedAtTo") LocalDateTime startedAtTo,
+        @Param("status") BackupStatus status,
         Pageable pageable);
 
 
@@ -39,8 +40,8 @@ public interface BackupRepository extends JpaRepository<Backup, Long> {
     Page<Backup> findByIdAfterAndFilters(
         @Param("idAfter") Long idAfter,
         @Param("worker") String worker,
-        @Param("status") BackupStatus status,
         @Param("startedAtFrom") LocalDateTime startedAtFrom,
         @Param("startedAtTo") LocalDateTime startedAtTo,
+        @Param("status") BackupStatus status,
         Pageable pageable);
   }

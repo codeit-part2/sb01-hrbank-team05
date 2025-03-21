@@ -13,13 +13,17 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
 @Table(name = "backup")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Backup {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,21 +47,27 @@ public class Backup {
   @JoinColumn(name = "file_id")
   private BinaryContent file;
 
-  public void setStatus(BackupStatus status) {
+  public Backup(String worker,BackupStatus status) {
+    this.worker = worker;
+    this.startedAt = LocalDateTime.now();
     this.status = status;
   }
 
+  public void setStatus(BackupStatus status) {
+    this.status = status;
+  }
+/*
   public void setStartedAt(LocalDateTime startedAt) {
     this.startedAt = startedAt;
-  }
+  }*/
 
   public void setEndedAt(LocalDateTime endedAt) {
     this.endedAt = endedAt;
   }
 
-  public void setWorker(String worker) {
+  /*public void setWorker(String worker) {
     this.worker = worker;
-  }
+  }*/
 
   public void setFileId(BinaryContent file) {
     this.file = file;
