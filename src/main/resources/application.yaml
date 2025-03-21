@@ -3,7 +3,10 @@ spring:
     multipart:
       maxFileSize: 10MB
       maxRequestSize: 30MB
-
+  datasource:
+    url: jdbc:postgresql://nozomi.proxy.rlwy.net:23506/railway
+    username: postgres
+    password: cgAuqCnLOZhyFXtsiSBPWqgrTORnxzsP
   jpa:
     hibernate:
       ddl-auto: validate
