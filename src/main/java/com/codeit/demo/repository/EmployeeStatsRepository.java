@@ -101,8 +101,8 @@ public class EmployeeStatsRepository {
         List<Tuple> results = query
                 .select(employee.department.name, employee.count())
                 .from(employee)
-                .where(employee.hireDate.loe(date)
-                        .and(employee.status.ne(EmploymentStatus.RESIGNED)))
+                .where(employee.hireDate.loe(date),
+                        employee.status.ne(EmploymentStatus.RESIGNED))
                 .groupBy(employee.department.name)
                 .fetch();
 
