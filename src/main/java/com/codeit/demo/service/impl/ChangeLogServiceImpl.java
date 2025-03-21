@@ -15,6 +15,7 @@ import com.codeit.demo.service.ChangeLogService;
 import com.codeit.demo.util.ClientInfo;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -141,7 +142,11 @@ public class ChangeLogServiceImpl implements ChangeLogService {
           break;
 
         default:
-          throw new IllegalArgumentException("Unsupported sort field: " + sortField);
+          cursorTime = getCursorTime(cursor);
+          page = changeLogCustomRepository.findAllWithCursorAt(employeeNumber, typeStr, ipAddress,
+              memo,
+              atFrom, atTo, idAfter, cursorTime, sortDirection, pageable);
+          break;
       }
     }
 
@@ -164,7 +169,11 @@ public class ChangeLogServiceImpl implements ChangeLogService {
 
   // 커서 시간을 `Instant`로 변환
   private Instant getCursorTime(Object cursor) {
-    return Instant.parse((String) cursor).atZone(ZoneId.of("Asia/Seoul")).toInstant();
+    try {
+      return Instant.parse((String) cursor).atZone(ZoneId.of("Asia/Seoul")).toInstant();
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException("잘못된 형식의 커서입니다.");
+    }
   }
 
   // `idAfter` 기반으로 IP 주소 조회
