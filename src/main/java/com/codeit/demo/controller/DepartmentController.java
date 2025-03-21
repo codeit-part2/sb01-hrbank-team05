@@ -6,36 +6,41 @@ import com.codeit.demo.dto.data.DepartmentDto;
 import com.codeit.demo.dto.request.DepartmentCreateRequest;
 import com.codeit.demo.dto.request.DepartmentUpdateRequest;
 import com.codeit.demo.service.DepartmentService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/departments")
+@RequestMapping({"/departments", "/api/departments"})
 public class DepartmentController implements DepartmentApi {
 
   private final DepartmentService departmentService;
+  private final HttpServletRequest httpServletRequest;
 
   @Override
   @GetMapping
   public ResponseEntity<CursorPageResponseDepartmentDto> getAllDepartments(
-      @RequestParam(required = false) String nameOrDescription,
-      @RequestParam(required = false) Long idAfter,
-      @RequestParam(required = false) Object cursor,
-      @RequestParam(defaultValue = "10") int size) {
+          @RequestParam(required = false, defaultValue = "") String nameOrDescription,
+          @RequestParam(defaultValue = "0") Long lastId,
+          @RequestParam(defaultValue = "10") int size,
+          @RequestParam(defaultValue = "id") String sortField,
+          @RequestParam(defaultValue = "asc") String sortDirection) {
 
-    CursorPageResponseDepartmentDto response =
-        departmentService.getAllDepartments(nameOrDescription, idAfter, cursor, size);
+    log.info("getAllDepartments called with nameOrDescription={}, lastId={}, size={}, sortField={}, sortDirection={}",
+            nameOrDescription, lastId, size, sortField, sortDirection);
 
+    log.debug("Full request URL: {}", httpServletRequest.getRequestURL() + "?" + httpServletRequest.getQueryString());
+
+    CursorPageResponseDepartmentDto response = departmentService.getAllDepartments(
+            nameOrDescription, lastId, size, sortField, sortDirection);
     return ResponseEntity.ok(response);
   }
-
 
   @Override
   @GetMapping("/{id}")
@@ -54,8 +59,8 @@ public class DepartmentController implements DepartmentApi {
   @Override
   @PatchMapping("/{id}")
   public ResponseEntity<DepartmentDto> updateDepartment(
-      @PathVariable Long id,
-      @Valid @RequestBody DepartmentUpdateRequest request) {
+          @PathVariable Long id,
+          @Valid @RequestBody DepartmentUpdateRequest request) {
     DepartmentDto updatedDepartment = departmentService.updateDepartment(id, request);
     return ResponseEntity.ok(updatedDepartment);
   }
