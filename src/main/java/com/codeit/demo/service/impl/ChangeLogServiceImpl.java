@@ -8,6 +8,7 @@ import com.codeit.demo.entity.ChangeLog;
 import com.codeit.demo.entity.Employee;
 import com.codeit.demo.entity.enums.ChangeType;
 import com.codeit.demo.mapper.ChangeLogMapper;
+import com.codeit.demo.repository.ChangeLogCustomRepository;
 import com.codeit.demo.repository.ChangeLogRepository;
 import com.codeit.demo.service.ChangeDescriptionService;
 import com.codeit.demo.service.ChangeLogService;
@@ -31,6 +32,7 @@ public class ChangeLogServiceImpl implements ChangeLogService {
   private final ChangeDescriptionService changeDescriptionService;
 
   private final ChangeLogRepository changeLogRepository;
+  private final ChangeLogCustomRepository changeLogCustomRepository;
 
   private final ChangeLogMapper changeLogMapper;
 
@@ -102,6 +104,7 @@ public class ChangeLogServiceImpl implements ChangeLogService {
     return changeLogRepository.countAllByAtGreaterThanAndAtLessThan(fromDate, toDate);
   }
 
+  @Transactional(readOnly = true)
   @Override
   public CursorPageResponseChangeLogDto<ChangeLogDto> findAll(
       String employeeNumber, ChangeType type, String memo, String ipAddress,
@@ -119,20 +122,21 @@ public class ChangeLogServiceImpl implements ChangeLogService {
 
     // 커서가 없는 첫 요청 처리
     if (cursor == null) {
-      page = changeLogRepository.findAll(employeeNumber, ipAddress, memo, typeStr, atFrom, atTo,
-          pageable);
+      page = changeLogCustomRepository.findAll(employeeNumber, ipAddress, memo, typeStr, atFrom,
+          atTo, pageable);
     } else {
       // 커서 기반 조회
       switch (sortField) {
         case "at":
           Instant cursorTime = getCursorTime(cursor);
-          page = changeLogRepository.findAllWithCursorAt(employeeNumber, typeStr, ipAddress, memo,
+          page = changeLogCustomRepository.findAllWithCursorAt(employeeNumber, typeStr, ipAddress,
+              memo,
               atFrom, atTo, idAfter, cursorTime, sortDirection, pageable);
           break;
 
         case "ipAddress":
           String cursorIp = getCursorIpAddress(idAfter);
-          page = changeLogRepository.findAllWithCursorIpAddress(employeeNumber, typeStr, memo,
+          page = changeLogCustomRepository.findAllWithCursorIpAddress(employeeNumber, typeStr, memo,
               ipAddress, atFrom, atTo, idAfter, cursorIp, sortDirection, pageable);
           break;
 
