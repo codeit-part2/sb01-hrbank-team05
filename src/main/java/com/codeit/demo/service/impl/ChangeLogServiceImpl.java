@@ -8,12 +8,14 @@ import com.codeit.demo.entity.ChangeLog;
 import com.codeit.demo.entity.Employee;
 import com.codeit.demo.entity.enums.ChangeType;
 import com.codeit.demo.mapper.ChangeLogMapper;
+import com.codeit.demo.repository.ChangeLogCustomRepository;
 import com.codeit.demo.repository.ChangeLogRepository;
 import com.codeit.demo.service.ChangeDescriptionService;
 import com.codeit.demo.service.ChangeLogService;
 import com.codeit.demo.util.ClientInfo;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class ChangeLogServiceImpl implements ChangeLogService {
   private final ChangeDescriptionService changeDescriptionService;
 
   private final ChangeLogRepository changeLogRepository;
+  private final ChangeLogCustomRepository changeLogCustomRepository;
 
   private final ChangeLogMapper changeLogMapper;
 
@@ -102,6 +105,7 @@ public class ChangeLogServiceImpl implements ChangeLogService {
     return changeLogRepository.countAllByAtGreaterThanAndAtLessThan(fromDate, toDate);
   }
 
+  @Transactional(readOnly = true)
   @Override
   public CursorPageResponseChangeLogDto<ChangeLogDto> findAll(
       String employeeNumber, ChangeType type, String memo, String ipAddress,
@@ -119,25 +123,30 @@ public class ChangeLogServiceImpl implements ChangeLogService {
 
     // 커서가 없는 첫 요청 처리
     if (cursor == null) {
-      page = changeLogRepository.findAll(employeeNumber, ipAddress, memo, typeStr, atFrom, atTo,
-          pageable);
+      page = changeLogCustomRepository.findAll(employeeNumber, ipAddress, memo, typeStr, atFrom,
+          atTo, pageable);
     } else {
       // 커서 기반 조회
       switch (sortField) {
         case "at":
           Instant cursorTime = getCursorTime(cursor);
-          page = changeLogRepository.findAllWithCursorAt(employeeNumber, typeStr, ipAddress, memo,
+          page = changeLogCustomRepository.findAllWithCursorAt(employeeNumber, typeStr, ipAddress,
+              memo,
               atFrom, atTo, idAfter, cursorTime, sortDirection, pageable);
           break;
 
         case "ipAddress":
           String cursorIp = getCursorIpAddress(idAfter);
-          page = changeLogRepository.findAllWithCursorIpAddress(employeeNumber, typeStr, memo,
+          page = changeLogCustomRepository.findAllWithCursorIpAddress(employeeNumber, typeStr, memo,
               ipAddress, atFrom, atTo, idAfter, cursorIp, sortDirection, pageable);
           break;
 
         default:
-          throw new IllegalArgumentException("Unsupported sort field: " + sortField);
+          cursorTime = getCursorTime(cursor);
+          page = changeLogCustomRepository.findAllWithCursorAt(employeeNumber, typeStr, ipAddress,
+              memo,
+              atFrom, atTo, idAfter, cursorTime, sortDirection, pageable);
+          break;
       }
     }
 
@@ -160,7 +169,11 @@ public class ChangeLogServiceImpl implements ChangeLogService {
 
   // 커서 시간을 `Instant`로 변환
   private Instant getCursorTime(Object cursor) {
-    return Instant.parse((String) cursor).atZone(ZoneId.of("Asia/Seoul")).toInstant();
+    try {
+      return Instant.parse((String) cursor).atZone(ZoneId.of("Asia/Seoul")).toInstant();
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException("잘못된 형식의 커서입니다.");
+    }
   }
 
   // `idAfter` 기반으로 IP 주소 조회

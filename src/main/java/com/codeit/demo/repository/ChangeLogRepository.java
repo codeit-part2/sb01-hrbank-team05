@@ -2,17 +2,14 @@ package com.codeit.demo.repository;
 
 import com.codeit.demo.entity.ChangeLog;
 import java.time.Instant;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ChangeLogRepository extends JpaRepository<ChangeLog, Long> {
 
   long countAllByAtGreaterThanAndAtLessThan(Instant fromDate, Instant toDate);
+<<<<<<< HEAD
 
   @Query(value = "SELECT cl FROM ChangeLog cl " +
       "WHERE (:employeeNumber IS NULL OR cl.employeeNumber LIKE CONCAT('%', CAST(:employeeNumber AS string), '%')) "
@@ -103,4 +100,6 @@ public interface ChangeLogRepository extends JpaRepository<ChangeLog, Long> {
       @Param("sortDirection") String sortDirection,
       Pageable pageable
   );
+=======
+>>>>>>> 1cce8853613b413e464d2b58596cb1de6c484397
 }

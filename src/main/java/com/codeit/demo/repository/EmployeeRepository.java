@@ -32,20 +32,19 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
   Optional<Employee> findTopByEmployeeNumberLikeOrderByEmployeeNumberDesc(String pattern);
 
   @Query("SELECT e FROM Employee e " +
+      "LEFT JOIN e.department d " +
       "WHERE (:idAfter IS NULL OR e.id > :idAfter) AND " +
       "(:cursor IS NULL OR e.id > :cursor) AND " +
-      "(:nameOrEmail IS NULL OR e.name LIKE :nameOrEmail OR e.email LIKE :nameOrEmail) AND " +
-      "(:employeeNumber IS NULL OR e.employeeNumber LIKE :employeeNumber) AND " +
-      "(:departmentName IS NULL OR e.department.name LIKE :departmentName) AND " +
-      "(:position IS NULL OR e.position LIKE :position) AND " +
+      "(:nameOrEmail IS NULL OR e.name LIKE CONCAT('%', CAST(:nameOrEmail AS string), '%') OR " +
+      " e.email LIKE CONCAT('%', CAST(:nameOrEmail AS string), '%')) AND " +
+      "(:employeeNumber IS NULL OR e.employeeNumber LIKE CONCAT('%', CAST(:employeeNumber AS string), '%')) AND " +
+      "(:departmentName IS NULL OR d.name LIKE CONCAT('%', CAST(:departmentName AS string), '%')) AND " +
+      "(:position IS NULL OR e.position LIKE CONCAT('%', CAST(:position AS string), '%')) AND " +
       "(:hireDateFrom IS NULL OR e.hireDate >= :hireDateFrom) AND " +
       "(:hireDateTo IS NULL OR e.hireDate <= :hireDateTo) AND " +
-      "(:status IS NULL OR CAST(e.status AS string) = :status) " +
-      "ORDER BY e.id ASC")
+      "(:status IS NULL OR CAST(e.status AS string) = :status) ")
   @EntityGraph(attributePaths = {"department", "profileImage"})
   List<Employee> findEmployeesWithAdvancedFilters(
-      @Param("idAfter") Long idAfter,
-      @Param("cursor") Long cursor,
       @Param("nameOrEmail") String nameOrEmail,
       @Param("employeeNumber") String employeeNumber,
       @Param("departmentName") String departmentName,
@@ -53,6 +52,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("hireDateFrom") LocalDate hireDateFrom,
       @Param("hireDateTo") LocalDate hireDateTo,
       @Param("status") String status,
+      @Param("idAfter") Long idAfter,
+      @Param("cursor") Long cursor,
       Pageable pageable);
 
 

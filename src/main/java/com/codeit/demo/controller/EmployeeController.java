@@ -12,8 +12,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -77,7 +75,7 @@ public class EmployeeController implements EmployeeApi {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireDateTo,
       @RequestParam(required = false) String status,
       @RequestParam(required = false) Long idAfter,
-      @RequestParam(required = false) Object cursor,
+      @RequestParam(required = false) String cursor,
       @RequestParam(defaultValue = "10") int size,
       @RequestParam(defaultValue = "id") String sortField,
       @RequestParam(defaultValue = "asc") String sortDirection) {
@@ -110,31 +108,19 @@ public class EmployeeController implements EmployeeApi {
   }
 
   @Override
-  @GetMapping("/department/{departmentId}")
-  public ResponseEntity<CursorPageResponseEmployeeDto> getEmployeesByDepartment(
-      @PathVariable Long departmentId,
-      @RequestParam(required = false) Long idAfter,
-      @RequestParam(defaultValue = "10") int size) {
-
-    CursorPageResponseEmployeeDto response =
-        employeeService.getEmployeesByDepartment(departmentId, idAfter, size);
-
-    return ResponseEntity.ok(response);
-  }
-
-
-  @Override
   @GetMapping("/stats/trend")
   public ResponseEntity<List<EmployeeTrendDto>> trend(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate from,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate to,
-      @RequestParam(defaultValue = "month") String unit){
+                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate to,
+                                                      @RequestParam(defaultValue = "month") String unit){
     List<EmployeeTrendDto> result=employeeService.findTrends(from, to, unit);
     return ResponseEntity.ok(result);
   }
 
   @GetMapping("/stats/distribution")
   public ResponseEntity<List<EmployeeDistributionDto>> getEmployeeDistribution(
-      @RequestParam(defaultValue = "department") String groupBy) {
-    return ResponseEntity.ok(employeeService.getEmployeeDistribution(groupBy));
+      @RequestParam(defaultValue = "department") String groupBy,
+      @RequestParam(defaultValue = "ACTIVE") String status
+  ) {
+    return ResponseEntity.ok(employeeService.findEmployeeDistribution(groupBy,status));
   }
 }
