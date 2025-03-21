@@ -2,6 +2,7 @@ package com.codeit.demo.repository;
 
 import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.entity.enums.PropertyName;
+import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -10,6 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.codeit.demo.entity.QChangeDescription.changeDescription;
 import static com.codeit.demo.entity.QEmployee.employee;
@@ -91,6 +96,44 @@ public class TrendRepository {
 
         return result != null ? result.intValue() : 0;
     }
+
+    public Map<String, Integer> findEmployeeCountByDepartment(LocalDate date) {
+        List<Tuple> results = query
+                .select(employee.department.name, employee.count())
+                .from(employee)
+                .where(employee.hireDate.loe(date)
+                        .and(employee.status.ne(EmploymentStatus.RESIGNED)))
+                .groupBy(employee.department.name)
+                .fetch();
+
+        return results.stream()
+                .collect(Collectors.toMap(
+                        tuple -> tuple.get(employee.department.name),
+                        tuple -> Optional.ofNullable(tuple.get(employee.count()))
+                                .map(Number::intValue)
+                                .orElse(0)
+                ));
+    }
+
+
+    public Map<String, Integer> findCurrentCountByPosition(LocalDate date) {
+        List<Tuple> results = query
+                .select(employee.position, employee.count())
+                .from(employee)
+                .where(employee.hireDate.loe(date),
+                        employee.status.ne(EmploymentStatus.RESIGNED))
+                .groupBy(employee.position)
+                .fetch();
+
+        return results.stream()
+                .collect(Collectors.toMap(
+                        tuple -> tuple.get(employee.position),
+                        tuple -> Optional.ofNullable(tuple.get(employee.count()))
+                                .map(Number::intValue)
+                                .orElse(0)
+                ));
+    }
+
 
 }
 

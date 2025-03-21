@@ -28,12 +28,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cglib.core.Local;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -340,10 +342,14 @@ public class EmployeeServiceImpl implements EmployeeService {
 
   @Override
   @Transactional(readOnly = true)
-  public List<EmployeeDistributionDto> getEmployeeDistribution(String groupBy) {
+  public List<EmployeeDistributionDto> findEmployeeDistribution(String groupBy) {
 
+    LocalDate now = LocalDate.now();
     // 전체 직원 수
-    long totalEmployees = employeeRepository.count();
+    int nowCount = trendRepository.findEmployeeCountByDate(now);
+    int nowResigned = trendRepository.findTotalResigned(now);
+    int nowReturned = trendRepository.findTotalReturned(now);
+    int totalEmployees= nowCount -nowResigned+nowReturned;
 
     List<EmployeeDistributionDto> result = new ArrayList<>();
 
@@ -355,38 +361,34 @@ public class EmployeeServiceImpl implements EmployeeService {
     switch (groupBy.toLowerCase()) {
       case "department":
         // 부서별 분포
-        List<Object[]> departmentStats = employeeRepository.countEmployeesByDepartment();
-        for (Object[] stat : departmentStats) {
-          String departmentName = (String) stat[0];
-          Long count = (Long) stat[1];
-          double percentage = (double) count / totalEmployees * 100;
+        Map<String, Integer> countByDepartment = trendRepository.findEmployeeCountByDepartment(now);
+        for (String department : countByDepartment.keySet()) {
+          int currentCount = countByDepartment.getOrDefault(department, 0);
+          double percentage = currentCount == 0 ? 0.0 : (double) currentCount / totalEmployees * 100;
 
           result.add(EmployeeDistributionDto.builder()
-              .groupKey(departmentName)
-              .count(count)
-              .percentage(Math.round(percentage * 10.0) / 10.0) // 소수점 첫째자리까지만 표시
-              .build());
+                  .groupKey(department)
+                  .count(currentCount)
+                  .percentage(Math.round(percentage * 10.0) / 10.0)
+                  .build());
         }
         break;
 
       case "position":
-        // 직급별 분포
-        List<Object[]> positionStats = employeeRepository.countEmployeesByPosition();
-        for (Object[] stat : positionStats) {
-          String position = (String) stat[0];
-          Long count = (Long) stat[1];
-          double percentage = (double) count / totalEmployees * 100;
+        Map<String, Integer> countByPosition = trendRepository.findCurrentCountByPosition(now);
+        for (String position : countByPosition.keySet()) {
+          int currentCount = countByPosition.getOrDefault(position, 0);
+          double percentage = currentCount == 0 ? 0.0 : (double) currentCount / totalEmployees * 100;
 
           result.add(EmployeeDistributionDto.builder()
-              .groupKey(position)
-              .count(count)
-              .percentage(Math.round(percentage * 10.0) / 10.0)
-              .build());
+                  .groupKey(position)
+                  .count(currentCount)
+                  .percentage(Math.round(percentage * 10.0) / 10.0)
+                  .build());
         }
         break;
 
       case "status":
-        // 고용 상태별 분포
         List<Object[]> statusStats = employeeRepository.countEmployeesByStatus();
         for (Object[] stat : statusStats) {
           String status = (String) stat[0];
@@ -394,10 +396,10 @@ public class EmployeeServiceImpl implements EmployeeService {
           double percentage = (double) count / totalEmployees * 100;
 
           result.add(EmployeeDistributionDto.builder()
-              .groupKey(status)
-              .count(count)
-              .percentage(Math.round(percentage * 10.0) / 10.0)
-              .build());
+                  .groupKey(status)
+                  .count(count)
+                  .percentage(Math.round(percentage * 10.0) / 10.0)
+                  .build());
         }
         break;
 

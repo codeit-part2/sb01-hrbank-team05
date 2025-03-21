@@ -135,6 +135,6 @@ public class EmployeeController implements EmployeeApi {
   @GetMapping("/stats/distribution")
   public ResponseEntity<List<EmployeeDistributionDto>> getEmployeeDistribution(
       @RequestParam(defaultValue = "department") String groupBy) {
-    return ResponseEntity.ok(employeeService.getEmployeeDistribution(groupBy));
+    return ResponseEntity.ok(employeeService.findEmployeeDistribution(groupBy));
   }
 }
