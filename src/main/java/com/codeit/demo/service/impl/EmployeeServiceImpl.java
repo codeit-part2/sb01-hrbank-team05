@@ -336,7 +336,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
   @Override
   @Transactional(readOnly = true)
-  public List<EmployeeDistributionDto> findEmployeeDistribution(String groupBy) {
+  public List<EmployeeDistributionDto> findEmployeeDistribution(String groupBy,String status) {
 
     LocalDate now = LocalDate.now();
     // 전체 직원 수
@@ -385,7 +385,7 @@ public class EmployeeServiceImpl implements EmployeeService {
       case "status":
         List<Object[]> statusStats = employeeRepository.countEmployeesByStatus();
         for (Object[] stat : statusStats) {
-          String status = (String) stat[0];
+          status = (String) stat[0];
           Long count = (Long) stat[1];
           double percentage = (double) count / totalEmployees * 100;
 

@@ -9,8 +9,6 @@ import com.codeit.demo.dto.request.EmployeeUpdateRequest;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface EmployeeService {
@@ -63,6 +61,6 @@ public interface EmployeeService {
   List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit);
 
   // 직원 분포 통계 조회
-  List<EmployeeDistributionDto> findEmployeeDistribution(String groupBy);
+  List<EmployeeDistributionDto> findEmployeeDistribution(String groupBy,String status);
 
 }

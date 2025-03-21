@@ -1,6 +1,7 @@
 package com.codeit.demo.controller.api;
 
 import com.codeit.demo.dto.data.CursorPageResponseEmployeeDto;
+import com.codeit.demo.dto.data.EmployeeDistributionDto;
 import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
 import com.codeit.demo.dto.request.EmployeeCreateRequest;
@@ -116,11 +117,19 @@ public interface EmployeeApi {
   );
 
 
+  @Operation(summary = "직원 수 조회", description = "지정된 조건에 맞는 직원 수를 조회합니다. 상태 필터링 및 입사일 기간 필터링이 가능합니다.")
+  @ApiResponses(value = {
+          @ApiResponse(responseCode = "200", description = "조회 성공"),
+          @ApiResponse(responseCode = "400", description = "잘못된 요청",
+                  content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+          @ApiResponse(responseCode = "500", description = "서버 오류",
+                  content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  })
   @GetMapping("/api/employees/count")
   ResponseEntity<Long> getEmployeeCount(
       @Parameter(description = "상태 (재직중, 휴직중, 퇴사)") @RequestParam(required = false) String status,
-      @Parameter(description = "입사일 시작") @RequestParam(required = false) LocalDate hireStartDate,
-      @Parameter(description = "입사일 종료") @RequestParam(required = false) LocalDate hireEndDate
+      @Parameter(description = "입사일 시작") @RequestParam(required = false) LocalDate fromDate,
+      @Parameter(description = "입사일 종료") @RequestParam(required = false) LocalDate toDate
   );
 
   @Operation(summary = "부서별 직원 조회 (커서 기반)", description = "부서별로 직원 목록을 커서 기반으로 조회합니다.")
@@ -142,7 +151,7 @@ public interface EmployeeApi {
   );
 
 
-  @Operation(summary = "지정된 기간 및 시간 단위로 그룹화된 직원 수 추이를 조회합니다. 파라미터를 제공하지 않으면 최근 12개월 데이터를 월 단위로 반환합니다.")
+  @Operation(summary = "직원 수 추이 조회", description = "지정된 기간 및 시간 단위로 그룹화된 직원 수 추이를 조회합니다. 파라미터를 제공하지 않으면 최근 12개월 데이터를 월 단위로 반환합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공"),
       @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 지원하지 않는 시간 단위",
@@ -153,7 +162,28 @@ public interface EmployeeApi {
               schema = @Schema(implementation = ErrorResponse.class)))
 
   })
+  @GetMapping("/stats/trend")
   ResponseEntity<List<EmployeeTrendDto>> trend(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate from,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate to,
-      @RequestParam(defaultValue = "month") String unit);
+                                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate to,
+                                                      @RequestParam(defaultValue = "month") String unit);
+
+
+  @Operation(summary = "직원 분포 조회", description = "지정된 기준으로 그룹화된 직원 분포를 조회합니다.")
+  @ApiResponses({
+          @ApiResponse(responseCode = "200", description = "조회 성공"),
+          @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 지원하지 않는 그룹화 기준",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = ErrorResponse.class))),
+          @ApiResponse(responseCode = "500", description = "서버 오류",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = ErrorResponse.class)))
+
+  })
+  @GetMapping("/stats/distribution")
+  ResponseEntity<List<EmployeeDistributionDto>> getEmployeeDistribution(
+          @RequestParam(defaultValue = "department") String groupBy,
+          @RequestParam(defaultValue = "ACTIVE") String status
+  );
 }
+
+
