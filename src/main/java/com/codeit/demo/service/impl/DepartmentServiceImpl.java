@@ -11,13 +11,8 @@ import com.codeit.demo.repository.DepartmentRepository;
 import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.service.DepartmentService;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,55 +25,43 @@ public class DepartmentServiceImpl implements DepartmentService {
   private final EmployeeRepository employeeRepository;
   private final DepartmentMapper departmentMapper;
 
-
   @Override
   @Transactional(readOnly = true)
   public CursorPageResponseDepartmentDto getAllDepartments(
-      String nameOrDescription,
-      Long idAfter,
-      Object cursor,
-      int size) {
+          String nameOrDescription, Long idAfter, int size, String sortField, String sortDirection) {
 
-    Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.ASC, "id"));
+    Long cursorId = idAfter != null ? idAfter : 0L;
+    String sortFieldValue = sortField != null ? sortField : "id";
+    String sortDirectionValue = sortDirection != null ? sortDirection : "asc";
 
-    Long cursorId = cursor != null ? Long.parseLong(cursor.toString()) : null;
+    log.info("Service processing with sortField={}, sortDirection={}", sortFieldValue, sortDirectionValue);
 
     List<Department> departments = departmentRepository.findDepartments(
-        idAfter, cursorId, nameOrDescription, pageable);
+            cursorId, nameOrDescription, sortFieldValue, sortDirectionValue, size + 1);
 
     boolean hasNext = departments.size() > size;
-
     if (hasNext) {
       departments = departments.subList(0, size);
     }
 
-    Long nextCursor = hasNext
-        ? departments.get(departments.size() - 1).getId()
-        : null;
+    Long nextIdAfter = hasNext ? departments.get(departments.size() - 1).getId() : null;
+    String nextCursor = nextIdAfter != null ? nextIdAfter.toString() : null;
 
     List<DepartmentDto> departmentDtos = departments.stream()
-        .map(departmentMapper::toDto)
-        .collect(Collectors.toList());
+            .map(departmentMapper::toDto)
+            .toList();
 
-    long totalElements = departmentRepository.count(); // 전체 부서 개수
+    long totalElements = departmentRepository.count();
 
     return new CursorPageResponseDepartmentDto(
-        departmentDtos,
-        nextCursor != null ? nextCursor.toString() : null,
-        nextCursor, // idAfter 대신 nextCursor 사용
-        size,
-        totalElements,
-        hasNext
-    );
+            departmentDtos, nextCursor, nextIdAfter, size, totalElements, hasNext);
   }
-
-
 
   @Override
   @Transactional(readOnly = true)
   public DepartmentDto getDepartmentById(Long id) {
     Department department = departmentRepository.findById(id)
-        .orElseThrow(() -> new DepartmentNotFoundException("ID가 " + id + "인 부서를 찾을 수 없습니다."));
+            .orElseThrow(() -> new DepartmentNotFoundException("ID가 " + id + "인 부서를 찾을 수 없습니다."));
     return departmentMapper.toDto(department);
   }
 
@@ -86,7 +69,7 @@ public class DepartmentServiceImpl implements DepartmentService {
   @Transactional
   public DepartmentDto createDepartment(DepartmentCreateRequest request) {
     Department department = departmentMapper.toEntity(request);
-    department.setEmployeeCount(0); // 신규 부서는 직원 수 0으로 초기화
+    department.setEmployeeCount(0);
     Department savedDepartment = departmentRepository.save(department);
     return departmentMapper.toDto(savedDepartment);
   }
@@ -95,8 +78,7 @@ public class DepartmentServiceImpl implements DepartmentService {
   @Transactional
   public DepartmentDto updateDepartment(Long id, DepartmentUpdateRequest request) {
     Department department = departmentRepository.findById(id)
-        .orElseThrow(() -> new DepartmentNotFoundException("ID가 " + id + "인 부서를 찾을 수 없습니다."));
-
+            .orElseThrow(() -> new DepartmentNotFoundException("ID가 " + id + "인 부서를 찾을 수 없습니다."));
     departmentMapper.updateEntityFromRequest(request, department);
     Department updatedDepartment = departmentRepository.save(department);
     return departmentMapper.toDto(updatedDepartment);
@@ -108,13 +90,10 @@ public class DepartmentServiceImpl implements DepartmentService {
     if (!departmentRepository.existsById(id)) {
       throw new DepartmentNotFoundException("ID가 " + id + "인 부서를 찾을 수 없습니다.");
     }
-
-    // 해당 부서의 직원들이 있는지 확인
     long employeeCount = employeeRepository.countByDepartmentId(id);
     if (employeeCount > 0) {
       throw new IllegalStateException("해당 부서에 소속된 직원이 있어 삭제할 수 없습니다.");
     }
-
     departmentRepository.deleteById(id);
   }
 
@@ -122,11 +101,9 @@ public class DepartmentServiceImpl implements DepartmentService {
   @Transactional
   public DepartmentDto updateEmployeeCount(Long departmentId) {
     Department department = departmentRepository.findById(departmentId)
-        .orElseThrow(() -> new DepartmentNotFoundException("ID가 " + departmentId + "인 부서를 찾을 수 없습니다."));
-
+            .orElseThrow(() -> new DepartmentNotFoundException("ID가 " + departmentId + "인 부서를 찾을 수 없습니다."));
     int count = Math.toIntExact(employeeRepository.countByDepartmentId(departmentId));
     department.setEmployeeCount(count);
-
     Department updatedDepartment = departmentRepository.save(department);
     return departmentMapper.toDto(updatedDepartment);
   }
