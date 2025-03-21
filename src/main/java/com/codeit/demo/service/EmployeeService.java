@@ -1,5 +1,6 @@
 package com.codeit.demo.service;
 
+import com.codeit.demo.dto.data.CursorPageResponseEmployeeDto;
 import com.codeit.demo.dto.data.EmployeeDistributionDto;
 import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
@@ -22,7 +23,7 @@ public interface EmployeeService {
   EmployeeDto getEmployeeById(Long id);
 
   // 페이지 네이션 사용 하여 모든 직원 조회
-  Page<EmployeeDto> findAllEmployees(
+  public CursorPageResponseEmployeeDto findAllEmployees(
       String nameOrEmail,
       String employeeNumber,
       String departmentName,
@@ -30,7 +31,11 @@ public interface EmployeeService {
       LocalDate hireDateFrom,
       LocalDate hireDateTo,
       String status,
-      Pageable pageable);
+      Long idAfter,
+      Object cursor,
+      int size,
+      String sortField,
+      String sortDirection);
 
 
 
@@ -52,7 +57,7 @@ public interface EmployeeService {
 
 
   // 부서 ID로 소속 부서 직원 조회
-  Page<EmployeeDto> getEmployeesByDepartment(Long departmentId, Pageable pageable);
+  CursorPageResponseEmployeeDto getEmployeesByDepartment(Long departmentId, Long idAfter, int size);
 
   // 직원 추이 조회
   List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit);

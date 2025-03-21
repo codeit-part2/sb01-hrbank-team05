@@ -41,7 +41,7 @@ public class Backup {
   @Column(name = "status", nullable = false)
   private BackupStatus status;
 
-  @ManyToOne (fetch = FetchType.LAZY, optional = false)
+  @ManyToOne (fetch = FetchType.LAZY)
   @JoinColumn(name = "file_id")
   private BinaryContent file;
 
@@ -62,7 +62,7 @@ public class Backup {
     this.worker = worker;
   }
 
-  public void setFileId(Long fileId) {
+  public void setFileId(BinaryContent file) {
     this.file = file;
   }
 }

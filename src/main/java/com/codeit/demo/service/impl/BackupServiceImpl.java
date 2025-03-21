@@ -96,7 +96,7 @@ public class BackupServiceImpl {
 
       // BinaryContent 객체를 fileId를 통해 조회
       BinaryContent binaryContent = binaryContentService.findById(fileId);
-      history.setFileId(binaryContent.getId()); // BinaryContent 객체를 Backup에 설정
+      history.setFileId(binaryContent); // BinaryContent 객체를 Backup에 설정
 
       // 백업 이력 업데이트
       history.setStatus(BackupStatus.COMPLETED);
@@ -111,7 +111,7 @@ public class BackupServiceImpl {
         byte[] errorLogData = FileUtils.readFileToByteArray(errorLog);
         Long fileId = binaryContentService.storeFile(errorLogData, errorLog.getName()); // 동일한 방식으로 에러 로그 파일 저장
         BinaryContent binaryContent = binaryContentService.findById(fileId);
-        history.setFileId(binaryContent.getId()); // BinaryContent 객체를 Backup에 설정
+        history.setFileId(binaryContent); // BinaryContent 객체를 Backup에 설정
       } catch (IOException ex) {
         ex.printStackTrace();
       }

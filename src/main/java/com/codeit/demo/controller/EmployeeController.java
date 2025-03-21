@@ -1,12 +1,12 @@
 package com.codeit.demo.controller;
 
 import com.codeit.demo.controller.api.EmployeeApi;
+import com.codeit.demo.dto.data.CursorPageResponseEmployeeDto;
 import com.codeit.demo.dto.data.EmployeeDistributionDto;
 import com.codeit.demo.dto.data.EmployeeDto;
 import com.codeit.demo.dto.data.EmployeeTrendDto;
 import com.codeit.demo.dto.request.EmployeeCreateRequest;
 import com.codeit.demo.dto.request.EmployeeUpdateRequest;
-import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.service.EmployeeService;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -14,7 +14,6 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -67,9 +66,9 @@ public class EmployeeController implements EmployeeApi {
     return ResponseEntity.ok(employeeService.getEmployeeById(id));
   }
 
-  @Override
   @GetMapping
-  public ResponseEntity<Page<EmployeeDto>> getAllEmployees(
+  @Override
+  public ResponseEntity<CursorPageResponseEmployeeDto> getAllEmployees(
       @RequestParam(required = false) String nameOrEmail,
       @RequestParam(required = false) String employeeNumber,
       @RequestParam(required = false) String departmentName,
@@ -77,19 +76,18 @@ public class EmployeeController implements EmployeeApi {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireDateFrom,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireDateTo,
       @RequestParam(required = false) String status,
-      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(required = false) Long idAfter,
+      @RequestParam(required = false) Object cursor,
       @RequestParam(defaultValue = "10") int size,
-      @RequestParam(defaultValue = "name") String sortField,
+      @RequestParam(defaultValue = "id") String sortField,
       @RequestParam(defaultValue = "asc") String sortDirection) {
 
-    Sort.Direction direction =
-        "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-    PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+    CursorPageResponseEmployeeDto response = employeeService.findAllEmployees(
+        nameOrEmail, employeeNumber, departmentName, position,
+        hireDateFrom, hireDateTo, status,
+        idAfter, cursor, size, sortField, sortDirection);
 
-    Page<EmployeeDto> employeePage = employeeService.findAllEmployees(
-        nameOrEmail, employeeNumber, departmentName, position, hireDateFrom, hireDateTo, status,
-        pageable);
-    return ResponseEntity.ok(employeePage);
+    return ResponseEntity.ok(response);
   }
 
   @Override
@@ -113,15 +111,17 @@ public class EmployeeController implements EmployeeApi {
 
   @Override
   @GetMapping("/department/{departmentId}")
-  public ResponseEntity<Page<EmployeeDto>> getEmployeesByDepartment(
+  public ResponseEntity<CursorPageResponseEmployeeDto> getEmployeesByDepartment(
       @PathVariable Long departmentId,
-      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(required = false) Long idAfter,
       @RequestParam(defaultValue = "10") int size) {
-    PageRequest pageable = PageRequest.of(page, size);
-    Page<EmployeeDto> employeePage = employeeService.getEmployeesByDepartment(departmentId,
-        pageable);
-    return ResponseEntity.ok(employeePage);
+
+    CursorPageResponseEmployeeDto response =
+        employeeService.getEmployeesByDepartment(departmentId, idAfter, size);
+
+    return ResponseEntity.ok(response);
   }
+
 
   @Override
   @GetMapping("/stats/trend")

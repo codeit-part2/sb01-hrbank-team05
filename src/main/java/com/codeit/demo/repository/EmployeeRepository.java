@@ -32,15 +32,20 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
   Optional<Employee> findTopByEmployeeNumberLikeOrderByEmployeeNumberDesc(String pattern);
 
   @Query("SELECT e FROM Employee e " +
-      "WHERE (:nameOrEmail IS NULL OR e.name LIKE %:nameOrEmail% OR e.email LIKE %:nameOrEmail%) AND " +
-      "(:employeeNumber IS NULL OR e.employeeNumber LIKE %:employeeNumber%) AND " +
-      "(:departmentName IS NULL OR e.department.name LIKE %:departmentName%) AND " +
-      "(:position IS NULL OR e.position LIKE %:position%) AND " +
+      "WHERE (:idAfter IS NULL OR e.id > :idAfter) AND " +
+      "(:cursor IS NULL OR e.id > :cursor) AND " +
+      "(:nameOrEmail IS NULL OR e.name LIKE :nameOrEmail OR e.email LIKE :nameOrEmail) AND " +
+      "(:employeeNumber IS NULL OR e.employeeNumber LIKE :employeeNumber) AND " +
+      "(:departmentName IS NULL OR e.department.name LIKE :departmentName) AND " +
+      "(:position IS NULL OR e.position LIKE :position) AND " +
       "(:hireDateFrom IS NULL OR e.hireDate >= :hireDateFrom) AND " +
       "(:hireDateTo IS NULL OR e.hireDate <= :hireDateTo) AND " +
-      "(:status IS NULL OR CAST(e.status AS string) = :status)")
+      "(:status IS NULL OR CAST(e.status AS string) = :status) " +
+      "ORDER BY e.id ASC")
   @EntityGraph(attributePaths = {"department", "profileImage"})
-  Page<Employee> findEmployeesWithAdvancedFilters(
+  List<Employee> findEmployeesWithAdvancedFilters(
+      @Param("idAfter") Long idAfter,
+      @Param("cursor") Long cursor,
       @Param("nameOrEmail") String nameOrEmail,
       @Param("employeeNumber") String employeeNumber,
       @Param("departmentName") String departmentName,
@@ -50,6 +55,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("status") String status,
       Pageable pageable);
 
+
   @Query("SELECT COUNT(e) FROM Employee e " +
       "WHERE (:status IS NULL OR CAST(e.status AS string) = CAST(:status AS string)) " +
       "AND (:startDate IS NULL OR e.hireDate >= :startDate) " +
@@ -57,6 +63,14 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
   long countEmployeesByFilters(@Param("status") EmploymentStatus status,
       @Param("startDate") LocalDate startDate,
       @Param("endDate") LocalDate endDate);
+
+  @Query("SELECT e FROM Employee e WHERE e.department.id = :departmentId AND (:idAfter IS NULL OR e.id > :idAfter) ORDER BY e.id ASC")
+  @EntityGraph(attributePaths = {"department", "profileImage"})
+  List<Employee> findEmployeesByDepartment(
+      @Param("departmentId") Long departmentId,
+      @Param("idAfter") Long idAfter,
+      Pageable pageable);
+
 
   Optional<Employee> findByName(String name);
 
