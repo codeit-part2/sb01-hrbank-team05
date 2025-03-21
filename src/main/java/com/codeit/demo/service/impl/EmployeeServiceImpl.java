@@ -9,7 +9,7 @@ import com.codeit.demo.dto.request.EmployeeUpdateRequest;
 import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.entity.Department;
 import com.codeit.demo.entity.Employee;
-import com.codeit.demo.repository.TrendRepository;
+import com.codeit.demo.repository.EmployeeStatsRepository;
 import com.codeit.demo.service.ChangeLogService;
 import com.codeit.demo.entity.enums.EmploymentStatus;
 import com.codeit.demo.exception.DepartmentNotFoundException;
@@ -22,11 +22,8 @@ import com.codeit.demo.service.BinaryContentService;
 import com.codeit.demo.service.EmployeeService;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,12 +32,9 @@ import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cglib.core.Local;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -55,7 +49,7 @@ public class EmployeeServiceImpl implements EmployeeService {
   private final EmployeeMapper employeeMapper;
   private final BinaryContentService binaryContentService;
   private final ChangeLogService changeLogService;
-  private final TrendRepository trendRepository;
+  private final EmployeeStatsRepository trendRepository;
 
 
   @Override

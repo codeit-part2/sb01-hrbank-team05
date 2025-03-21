@@ -22,7 +22,7 @@ import static com.codeit.demo.entity.QEmployee.employee;
 @Repository
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class TrendRepository {
+public class EmployeeStatsRepository {
     private final JPAQueryFactory query;
 
     public int findEmployeeCountByDate(LocalDate date) {
