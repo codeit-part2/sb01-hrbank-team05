@@ -9,6 +9,7 @@ public enum EmploymentStatus {
   RESIGNED("RESIGNED");
 
   private String value;
+
   EmploymentStatus(String value) {
     this.value = value;
   }

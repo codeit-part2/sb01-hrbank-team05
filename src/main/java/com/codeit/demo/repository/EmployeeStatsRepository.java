@@ -102,7 +102,7 @@ public class EmployeeStatsRepository {
                 .select(employee.department.name, employee.count())
                 .from(employee)
                 .where(employee.hireDate.loe(date),
-                        employee.status.ne(EmploymentStatus.RESIGNED))
+                        employee.status.stringValue().ne(EmploymentStatus.RESIGNED.getValue()))
                 .groupBy(employee.department.name)
                 .fetch();
 
@@ -121,7 +121,7 @@ public class EmployeeStatsRepository {
                 .select(employee.position, employee.count())
                 .from(employee)
                 .where(employee.hireDate.loe(date),
-                        employee.status.ne(EmploymentStatus.RESIGNED))
+                        employee.status.stringValue().ne(EmploymentStatus.RESIGNED.getValue()))
                 .groupBy(employee.position)
                 .fetch();
 
