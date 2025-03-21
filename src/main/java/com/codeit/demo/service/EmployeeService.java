@@ -63,6 +63,6 @@ public interface EmployeeService {
   List<EmployeeTrendDto> findTrends(LocalDate from, LocalDate to, String unit);
 
   // 직원 분포 통계 조회
-  List<EmployeeDistributionDto> getEmployeeDistribution(String groupBy);
+  List<EmployeeDistributionDto> findEmployeeDistribution(String groupBy);
 
 }
