@@ -21,22 +21,30 @@ public interface EmployeeMapper {
   @Mapping(source = "department.name", target = "departmentName")
   @Mapping(source = "department.id", target = "departmentId")
   @Mapping(source = "status", target = "status")
+  @Mapping(source = "profileImageId", target = "profileImageId", qualifiedByName = "binaryContentToId")
   EmployeeDto employeeToEmployeeDto(Employee employee);
+
+  @Named("binaryContentToId")
+  default Long binaryContentToId(BinaryContent binaryContent) {
+    return binaryContent != null ? binaryContent.getId() : null;
+  }
+
 
   // EmployeeCreateRequest를 Employee로 변환 (신규 직원 생성 시)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "department", source = "departmentId", qualifiedByName = "departmentIdToDepartment")
   @Mapping(target = "hireDate", source = "hireDate")
   @Mapping(target = "status", expression = "java(EmploymentStatus.ACTIVE)")
-  @Mapping(target = "profileImage", ignore = true)
+  @Mapping(target = "profileImageId", ignore = true)  // profileImage -> profileImageId 로 변경
   Employee employeeCreateRequestToEmployee(EmployeeCreateRequest request);
+
 
   // EmployeeUpdateRequest를 Employee로 변환 (직원 정보 업데이트 시)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "department", source = "departmentId", qualifiedByName = "departmentIdToDepartment")
   @Mapping(target = "hireDate", source = "hireDate")
   @Mapping(target = "status", source = "status")
-  @Mapping(target = "profileImage", ignore = true)
+  @Mapping(target = "profileImageId", ignore = true)  // profileImage -> profileImageId 로 변경
   void updateEmployeeFromRequest(EmployeeUpdateRequest request, @MappingTarget Employee employee);
 
   // 부서 ID를 Department 객체로 변환하는 메서드
@@ -52,7 +60,7 @@ public interface EmployeeMapper {
 
   // 프로필 이미지 설정을 위한 기본 메서드
   default Employee setProfileImage(Employee employee, BinaryContent profileImage) {
-    employee.setProfileImage(profileImage);
+    employee.setProfileImageId(profileImage);
     return employee;
   }
 

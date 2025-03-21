@@ -69,5 +69,5 @@ public class Employee {
 
   @OneToOne
   @JoinColumn(name = "profile_image_id")
-  private BinaryContent profileImage;
+  private BinaryContent profileImageId;
 }
