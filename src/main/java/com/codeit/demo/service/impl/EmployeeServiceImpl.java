@@ -82,7 +82,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     if (file != null && !file.isEmpty()) {
 
       BinaryContent savedFile = binaryContentService.createBinaryContent(file);
-      employee.setProfileImage(savedFile);
+      employee.setProfileImageId(savedFile);
     }
     // 생성된 직원의 부서가 있으면 직원 수 증가
     if (employee.getDepartment() != null) {
@@ -253,13 +253,13 @@ public class EmployeeServiceImpl implements EmployeeService {
         .orElseThrow(() -> new EmployeeNotFoundException("직원을 찾을 수 없습니다: " + id));
 
     // 기존 이미지 삭제 처리
-    if (employee.getProfileImage() != null) {
-      binaryContentService.delete(employee.getProfileImage().getId());
+    if (employee.getProfileImageId() != null) {
+      binaryContentService.delete(employee.getProfileImageId().getId());
     }
 
     // 새 이미지 저장
     BinaryContent savedFile = binaryContentService.createBinaryContent(file);
-    employee.setProfileImage(savedFile);
+    employee.setProfileImageId(savedFile);
 
     Employee updatedEmployee = employeeRepository.save(employee);
     return employeeMapper.employeeToEmployeeDto(updatedEmployee);

@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository;
 public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSpecificationExecutor<Employee> {
 
   // 이메일로 직원 찾기
-  @EntityGraph(attributePaths = {"department", "profileImage"})
+  @EntityGraph(attributePaths = {"department", "profileImageId"})
   Optional<Employee> findByEmail(String email);
 
   // 부서별 조회
@@ -28,7 +28,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
   Long countByDepartmentId(Long departmentId);
 
-  @EntityGraph(attributePaths = {"department", "profileImage"})
+  @EntityGraph(attributePaths = {"department", "profileImageId"})
   Optional<Employee> findTopByEmployeeNumberLikeOrderByEmployeeNumberDesc(String pattern);
 
   @Query("SELECT e FROM Employee e " +
@@ -43,7 +43,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       "(:hireDateFrom IS NULL OR e.hireDate >= :hireDateFrom) AND " +
       "(:hireDateTo IS NULL OR e.hireDate <= :hireDateTo) AND " +
       "(:status IS NULL OR CAST(e.status AS string) = :status) ")
-  @EntityGraph(attributePaths = {"department", "profileImage"})
+  @EntityGraph(attributePaths = {"department", "profileImageId"})
   List<Employee> findEmployeesWithAdvancedFilters(
       @Param("nameOrEmail") String nameOrEmail,
       @Param("employeeNumber") String employeeNumber,
@@ -66,7 +66,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
       @Param("endDate") LocalDate endDate);
 
   @Query("SELECT e FROM Employee e WHERE e.department.id = :departmentId AND (:idAfter IS NULL OR e.id > :idAfter) ORDER BY e.id ASC")
-  @EntityGraph(attributePaths = {"department", "profileImage"})
+  @EntityGraph(attributePaths = {"department", "profileImageId"})
   List<Employee> findEmployeesByDepartment(
       @Param("departmentId") Long departmentId,
       @Param("idAfter") Long idAfter,
