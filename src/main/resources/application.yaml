@@ -4,9 +4,9 @@ spring:
       maxFileSize: 10MB
       maxRequestSize: 30MB
   datasource:
-    url: jdbc:postgresql://yamanote.proxy.rlwy.net:17891/railway
+    url: jdbc:postgresql://nozomi.proxy.rlwy.net:23506/railway
     username: postgres
-    password: FexBqkAHYPuJQNlBglvjHCrZqtECkCBI
+    password: cgAuqCnLOZhyFXtsiSBPWqgrTORnxzsP
   jpa:
     hibernate:
       ddl-auto: validate
