@@ -2,7 +2,6 @@ package com.codeit.demo.service.impl;
 
 import static com.codeit.demo.entity.enums.BackupStatus.COMPLETED;
 import static com.codeit.demo.entity.enums.BackupStatus.IN_PROGRESS;
-import static com.codeit.demo.entity.enums.BackupStatus.valueOf;
 
 import com.codeit.demo.dto.response.BackupHistoryDto;
 import com.codeit.demo.dto.response.CursorPageResponseBackupDto;
@@ -11,7 +10,6 @@ import com.codeit.demo.entity.BinaryContent;
 import com.codeit.demo.entity.Employee;
 import com.codeit.demo.entity.enums.BackupStatus;
 import com.codeit.demo.repository.BackupRepository;
-import com.codeit.demo.repository.BinaryContentRepository;
 import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.storage.BinaryContentStorage;
 import java.io.File;
@@ -20,9 +18,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.springframework.data.domain.Page;
@@ -66,9 +62,6 @@ public class BackupServiceImpl {
   // 2. 데이터 백업 필요 시 데이터 백업 이력을 등록
   public Backup startBackup(String worker) { //worker ip주소 어떻게 얻을 건지 고민하기
     Backup history = new Backup(worker, IN_PROGRESS);
-    //history.setWorker(worker);
-    /*history.setStartedAt(LocalDateTime.now());
-    history.setStatus(BackupStatus.IN_PROGRESS);*/
     history.setEndedAt(LocalDateTime.now());
     return backupRepository.save(history);
   }
@@ -78,9 +71,6 @@ public class BackupServiceImpl {
     // 백업 필요 여부 X
     if (!isBackupNeeded()) {
       Backup skippedHistory = new Backup(worker, BackupStatus.SKIPPED);
-  /*    skippedHistory.setWorker(worker);
-      skippedHistory.setStartedAt(LocalDateTime.now());*/
-      //skippedHistory.setStatus(BackupStatus.SKIPPED);
       skippedHistory.setEndedAt(LocalDateTime.now());
       backupRepository.save(skippedHistory); // 필요없다면 스킵으로 저장 및 종료
       return new BackupHistoryDto(skippedHistory);

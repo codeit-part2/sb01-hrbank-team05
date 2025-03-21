@@ -56,18 +56,11 @@ public class Backup {
   public void setStatus(BackupStatus status) {
     this.status = status;
   }
-/*
-  public void setStartedAt(LocalDateTime startedAt) {
-    this.startedAt = startedAt;
-  }*/
 
   public void setEndedAt(LocalDateTime endedAt) {
     this.endedAt = endedAt;
   }
 
-  /*public void setWorker(String worker) {
-    this.worker = worker;
-  }*/
 
   public void setFileId(BinaryContent file) {
     this.file = file;
