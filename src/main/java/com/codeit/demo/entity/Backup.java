@@ -14,7 +14,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Getter;
-import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -22,7 +21,6 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @Table(name = "backup")
 public class Backup {
-
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
@@ -45,7 +43,6 @@ public class Backup {
   @JoinColumn(name = "file_id")
   private BinaryContent file;
 
-  // Getters and Setters
   public void setStatus(BackupStatus status) {
     this.status = status;
   }
@@ -65,4 +62,5 @@ public class Backup {
   public void setFileId(BinaryContent file) {
     this.file = file;
   }
+
 }

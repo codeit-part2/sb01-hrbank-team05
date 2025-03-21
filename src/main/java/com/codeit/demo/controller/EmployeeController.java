@@ -90,7 +90,7 @@ public class EmployeeController implements EmployeeApi {
 
   @Override
   @GetMapping("/count")
-  public ResponseEntity<Long> getEmployeeCount(
+  public ResponseEntity<Long> findEmployeeCount(
       @RequestParam(required = false) String status,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireStartDate,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hireEndDate) {
