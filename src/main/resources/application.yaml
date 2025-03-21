@@ -13,6 +13,14 @@ spring:
     show-sql: true
     database: postgresql
 
+backup:
+  batch:
+    interval: 3600000
+  directory: ./hrbank05/file/backup
+
+file:
+  upload-dir: ./hrbank05/file/backup
+
 demo:
   storage:
     type: local

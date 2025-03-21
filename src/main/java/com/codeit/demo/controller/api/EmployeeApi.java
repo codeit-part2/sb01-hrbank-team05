@@ -115,6 +115,7 @@ public interface EmployeeApi {
       @Parameter(description = "직원 ID", required = true) @PathVariable Long id
   );
 
+
   @Operation(summary = "직원 수 조회", description = "지정된 조건에 맞는 직원 수를 조회합니다. 상태 필터링 및 입사일 기간 필터링이 가능합니다.", operationId = "getEmployeeCount")
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "조회 성공",
@@ -125,7 +126,7 @@ public interface EmployeeApi {
           content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   })
   @GetMapping("/api/employees/count")
-  ResponseEntity<Long> getEmployeeCount(
+  ResponseEntity<Long> findEmployeeCount(
       @Parameter(description = "직원 상태 (재직중, 휴직중, 퇴사)", schema = @Schema(type = "string", allowableValues = {"ACTIVE", "ON_LEAVE", "RESIGNED"}))
       @RequestParam(required = false) String status,
       @Parameter(description = "입사일 시작 (지정 시 해당 기간 내 입사한 직원 수 조회, 미지정 시 전체 직원 수 조회)")

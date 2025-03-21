@@ -69,5 +69,24 @@ public class Employee {
 
   @OneToOne
   @JoinColumn(name = "profile_image_id")
-  private BinaryContent profileImageId;
+  private BinaryContent profileImage;
+
+  /**
+   * Employee 객체를 CSV 형식의 문자열로 변환합니다.
+   */
+  public String toCsvString() {
+    return String.join(",",
+        String.valueOf(id),
+        employeeNumber,
+        name,
+        email,
+        position,
+        hireDate != null ? hireDate.toString() : "",
+        status != null ? status.name() : "",
+        createdAt != null ? createdAt.toString() : "",
+        updatedAt != null ? updatedAt.toString() : "",
+        department != null ? department.getName() : "",
+        profileImage != null ? String.valueOf(profileImage.getId()) : ""
+    );
+  }
 }

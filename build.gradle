@@ -53,7 +53,8 @@ dependencies {
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 
-
+	//Apache Commons IO (CSV 파일 생성 시 필요)
+	implementation 'commons-io:commons-io:2.11.0'
 }
 
 tasks.named('test') {
