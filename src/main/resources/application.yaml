@@ -16,7 +16,7 @@ spring:
 backup:
   batch:
     interval: 3600000
-  directory: ./hrbank05/file/backup
+  directory: ./hrbank05/backup
 
 file:
   upload-dir: ./hrbank05/file/backup
