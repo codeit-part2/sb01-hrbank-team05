@@ -11,13 +11,6 @@ spring:
       maximum-pool-size: 4
       connection-init-sql: SET TIME ZONE 'Asia/Seoul'
 
-    #url: jdbc:postgresql://nozomi.proxy.rlwy.net:23506/railway
-    #username: postgres
-    #password: cgAuqCnLOZhyFXtsiSBPWqgrTORnxzsP
-    #url: jdbc:postgresql://localhost:5432/hrbank
-    #username: hrbank_5
-    #password: hrbank_5
-
   jpa:
     hibernate:
       ddl-auto: validate
