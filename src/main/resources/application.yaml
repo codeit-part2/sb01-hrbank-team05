@@ -22,6 +22,10 @@ spring:
       ddl-auto: validate
     show-sql: true
     database: postgresql
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Seoul
 
 backup:
   batch:
