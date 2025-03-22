@@ -474,6 +474,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .mapToObj(from::plusDays)
                 .toList());
         break;
+      case "week":
+        dates.addAll(IntStream.iterate(1, i -> from.plusWeeks(i).isBefore(to) || from.plusWeeks(i).isEqual(to), i -> i + 1)
+                .mapToObj(from::plusWeeks)
+                .toList());
+        break;
       case "month":
         dates.addAll(IntStream.iterate(1, i -> from.plusMonths(i).isBefore(to) || from.plusMonths(i).isEqual(to), i -> i + 1)
                 .mapToObj(from::plusMonths)
