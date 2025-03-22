@@ -9,6 +9,7 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       maximum-pool-size: 5
+      connection-init-sql: SET TIME ZONE 'Asia/Seoul'
 
     #url: jdbc:postgresql://nozomi.proxy.rlwy.net:23506/railway
     #username: postgres
@@ -22,10 +23,7 @@ spring:
       ddl-auto: validate
     show-sql: true
     database: postgresql
-    properties:
-      hibernate:
-        jdbc:
-          time_zone: Asia/Seoul
+
 
 backup:
   batch:
