@@ -4,12 +4,12 @@ spring:
       maxFileSize: 10MB
       maxRequestSize: 30MB
   datasource:
-    #url: jdbc:postgresql://nozomi.proxy.rlwy.net:23506/railway
-    #username: postgres
-    #password: cgAuqCnLOZhyFXtsiSBPWqgrTORnxzsP
-    url: jdbc:postgresql://localhost:5432/hrbank
-    username: hrbank_5
-    password: hrbank_5
+    url: jdbc:postgresql://nozomi.proxy.rlwy.net:23506/railway
+    username: postgres
+    password: cgAuqCnLOZhyFXtsiSBPWqgrTORnxzsP
+    #url: jdbc:postgresql://localhost:5432/hrbank
+    #username: hrbank_5
+    #password: hrbank_5
   jpa:
     hibernate:
       ddl-auto: validate
