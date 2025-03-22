@@ -69,7 +69,7 @@ public class Employee {
 
   @OneToOne
   @JoinColumn(name = "profile_image_id")
-  private BinaryContent profileImage;
+  private BinaryContent profileImageId;
 
   /**
    * Employee 객체를 CSV 형식의 문자열로 변환합니다.
@@ -86,7 +86,7 @@ public class Employee {
         createdAt != null ? createdAt.toString() : "",
         updatedAt != null ? updatedAt.toString() : "",
         department != null ? department.getName() : "",
-        profileImage != null ? String.valueOf(profileImage.getId()) : ""
+        profileImageId != null ? String.valueOf(profileImageId.getId()) : ""
     );
   }
 }
