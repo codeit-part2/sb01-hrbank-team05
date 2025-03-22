@@ -227,9 +227,10 @@
 - 수정이력
   - 직원 정보 수정 이력 관리 및 검색
  
-**협업 문서 [🔗 notion](https://sb01-hrbank-team05-production.up.railway.app/)**
- 
 - 데이터백업
   - 새 백업 생성 (요청 및 배치 백업 지원)
   - 파일 다운로드
   - 조회 검색
+ 
+
+**협업 문서 [🔗 notion](https://agate-spectacles-6eb.notion.site/1b5c5631fb0180f6aee4ccdd7b897b74?pvs=4)**
