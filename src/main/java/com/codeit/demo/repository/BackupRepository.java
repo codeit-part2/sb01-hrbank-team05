@@ -14,13 +14,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BackupRepository extends JpaRepository<Backup, Long> {
 
-    @Query("SELECT b FROM Backup b WHERE b.status = :status ORDER BY b.endedAt DESC limit 1")
+    @Query("SELECT b FROM Backup b WHERE CAST(b.status AS string) = :status ORDER BY b.endedAt DESC limit 1")
     Optional<Backup> findLastBackup(@Param("status") BackupStatus status);
 
 
     @Query("SELECT b FROM Backup b WHERE " +
         "(COALESCE(:worker, '') = '' OR b.worker LIKE CONCAT('%', :worker, '%')) AND " +
-        "(COALESCE(:status, NULL) IS NULL OR b.status = :status) AND " +
+        "(COALESCE(:status, NULL) IS NULL OR CAST(b.status AS string) = :status) AND " +
         "(COALESCE(:startedAtFrom, NULL) IS NULL OR b.startedAt >= :startedAtFrom) AND " +
         "(COALESCE(:startedAtTo, NULL) IS NULL OR b.startedAt <= :startedAtTo)")
     Page<Backup> findByFilters(
@@ -34,7 +34,7 @@ public interface BackupRepository extends JpaRepository<Backup, Long> {
     @Query("SELECT b FROM Backup b WHERE " +
         "b.id > :idAfter AND " +
         "(:worker IS NULL OR b.worker LIKE CONCAT('%', :worker, '%')) AND " +
-        "(:status IS NULL OR b.status = :status) AND " +
+        "(:status IS NULL OR CAST(b.status AS string) = :status) AND " +
         "(:startedAtFrom IS NULL OR b.startedAt >= :startedAtFrom) AND " +
         "(:startedAtTo IS NULL OR b.startedAt <= :startedAtTo)")
     Page<Backup> findByIdAfterAndFilters(
