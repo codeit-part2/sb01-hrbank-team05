@@ -14,6 +14,7 @@ import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.storage.BinaryContentStorage;
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -36,7 +37,6 @@ public class BackupServiceImpl {
   private final BackupRepository backupRepository;
   private final EmployeeRepository employeeRepository;
   private final BinaryContentServiceImpl binaryContentService;
-  private final BinaryContentStorage binaryContentStorage;
   private String backupDirectory = "./hrBank05/backup";
   private final DateTimeFormatter fileNameFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
@@ -81,16 +81,8 @@ public class BackupServiceImpl {
     Backup history = startBackup(worker);
 
     try {
-      // 백업 파일 경로 생성 (안전한 파일명 형식 사용)
-      String timestamp = LocalDateTime.now().format(fileNameFormatter);
-
-      // 백업 디렉토리가 없으면 생성
-      File directory = new File(backupDirectory);
-      if (!directory.exists()) {
-        directory.mkdirs();
-      }
-
-      File backupFile = new File(backupDirectory + "/backup_" + timestamp + ".csv");
+      // 백업 파일 생성
+      File backupFile = new File(backupDirectory + "/backup_" + LocalDate.now().toString() + ".csv");
       List<String> employeeData = fetchEmployeeDataInChunks(); // 청크 단위로 데이터 조회
       FileUtils.writeLines(backupFile, employeeData);
 
