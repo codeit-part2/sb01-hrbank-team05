@@ -16,7 +16,6 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -38,9 +37,9 @@ public class BackupServiceImpl {
   private final EmployeeRepository employeeRepository;
   private final BinaryContentServiceImpl binaryContentService;
   private String backupDirectory = "./hrBank05/backup";
-  private final DateTimeFormatter fileNameFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
   //자동 배치 시스템 시간 단위
+
   @Scheduled(fixedRateString = "${backup.batch.interval}")
   public void scheduledBackup() {
     String worker = "system"; // 작업자는 system으로 고정
@@ -100,17 +99,8 @@ public class BackupServiceImpl {
       // 백업 실패 시 처리
       history.setStatus(BackupStatus.FAILED);
       history.setEndedAt(LocalDateTime.now());
-
-      // 에러 로그 파일 생성 (안전한 파일명 형식 사용)
-      String errorTimestamp = LocalDateTime.now().format(fileNameFormatter);
-      File errorLog = new File(backupDirectory + "/error_" + errorTimestamp + ".log");
+      File errorLog = new File(backupDirectory + "/error_" + LocalDateTime.now().toString() + ".log");
       try {
-        // 에러 로그 디렉토리가 없으면 생성
-        File errorDir = new File(backupDirectory);
-        if (!errorDir.exists()) {
-          errorDir.mkdirs();
-        }
-
         FileUtils.writeStringToFile(errorLog, e.getMessage(), "UTF-8");
         byte[] errorLogData = FileUtils.readFileToByteArray(errorLog);
         Long fileId = binaryContentService.storeFile(errorLogData, errorLog.getName()); // 동일한 방식으로 에러 로그 파일 저장
@@ -124,6 +114,8 @@ public class BackupServiceImpl {
     }
     return new BackupHistoryDto(history);
   }
+
+
 
   private List<String> fetchEmployeeDataInChunks() {
     List<String> allData = new ArrayList<>();
@@ -204,3 +196,9 @@ public class BackupServiceImpl {
     return latestBackup.map(BackupHistoryDto::new).orElse(null);
   }
 }
+
+
+/*
+* 백업 DB에서 생성, 백업 데이터는 파일 DB에 저장
+* 경로는 로컬 hrbank_backups 저장
+* */
