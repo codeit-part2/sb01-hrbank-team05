@@ -13,7 +13,10 @@ import com.codeit.demo.repository.BackupRepository;
 import com.codeit.demo.repository.EmployeeRepository;
 import com.codeit.demo.storage.BinaryContentStorage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -83,7 +86,19 @@ public class BackupServiceImpl {
       // 백업 파일 생성
       File backupFile = new File(backupDirectory + "/backup_" + LocalDate.now().toString() + ".csv");
       List<String> employeeData = fetchEmployeeDataInChunks(); // 청크 단위로 데이터 조회
-      FileUtils.writeLines(backupFile, employeeData);
+      //FileUtils.writeLines(backupFile, employeeData);
+      try (OutputStreamWriter writer = new OutputStreamWriter(
+              new FileOutputStream(backupFile), StandardCharsets.UTF_8)) {
+
+        // UTF-8 BOM 추가
+        writer.write('\uFEFF');
+
+        // 한 줄씩 CSV 내용 작성
+        for (String line : employeeData) {
+          writer.write(line);
+          writer.write(System.lineSeparator()); // 줄바꿈
+        }
+      }
 
       byte[] fileData = FileUtils.readFileToByteArray(backupFile);
       Long fileId = binaryContentService.storeFile(fileData, backupFile.getName()); //파일 저장 및 fileID 획득
