@@ -3,6 +3,12 @@ spring:
     multipart:
       maxFileSize: 10MB
       maxRequestSize: 30MB
+  web:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -10,6 +16,7 @@ spring:
     hikari:
       maximum-pool-size: 4
       connection-init-sql: SET TIME ZONE 'Asia/Seoul'
+
 
   jpa:
     hibernate:
