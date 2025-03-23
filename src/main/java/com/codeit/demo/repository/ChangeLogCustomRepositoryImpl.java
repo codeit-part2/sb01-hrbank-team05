@@ -73,6 +73,9 @@ public class ChangeLogCustomRepositoryImpl implements ChangeLogCustomRepository 
       orderSpecifiers.add(changeLog.at.desc()); // 기본 정렬: 날짜 최신순
     }
 
+    // 항상 id 기준 정렬 추가 (정렬 일관성 유지)
+    orderSpecifiers.add(changeLog.id.desc());
+
     // 데이터 조회
     List<ChangeLog> results = jpaQueryFactory
         .selectFrom(changeLog)
@@ -164,6 +167,9 @@ public class ChangeLogCustomRepositoryImpl implements ChangeLogCustomRepository 
       }
     }
 
+    // 항상 id 기준 정렬 추가 (정렬 일관성 유지)
+    orderSpecifiers.add(changeLog.id.desc());
+
     List<ChangeLog> results = jpaQueryFactory
         .selectFrom(changeLog)
         .where(builder)
@@ -252,6 +258,9 @@ public class ChangeLogCustomRepositoryImpl implements ChangeLogCustomRepository 
         orderSpecifiers.add(changeLog.at.desc()); // 기본 정렬 방향 desc
       }
     }
+
+    // 항상 id 기준 정렬 추가 (정렬 일관성 유지)
+    orderSpecifiers.add(changeLog.id.desc());
 
     List<ChangeLog> results = jpaQueryFactory
         .selectFrom(changeLog)
